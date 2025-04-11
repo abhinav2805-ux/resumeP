@@ -9,6 +9,8 @@ import re
 import logging
 import traceback
 from dotenv import load_dotenv
+import uuid
+from typing import Dict, List
 
 # Load environment variables
 load_dotenv()
@@ -27,6 +29,9 @@ if not GROQ_API_KEY:
     raise ValueError("Missing GROQ_API_KEY in .env")
 
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
+
+# Interview state storage (in-memory for simplicity, consider Redis in production)
+interviews: Dict[str, Dict] = {}
 
 # Helper: Extract text from PDF
 def extract_text_from_pdf(file_storage):
@@ -138,6 +143,179 @@ Resume Text:
         logger.error(traceback.format_exc())
         return jsonify({'error': 'An unexpected error occurred while processing your resume.'}), 500
 
+@app.route('/start-interview', methods=['POST'])
+def start_interview():
+    try:
+        data = request.json
+        resume_data = data.get('resumeData')
+        
+        if not resume_data:
+            return jsonify({"error": "No resume data provided"}), 400
+        
+        # Generate interview ID
+        interview_id = str(uuid.uuid4())
+        
+        # Construct initial prompt
+        prompt = f"""
+You are a professional interviewer conducting a technical and behavioral interview based on the following resume. 
+Ask relevant questions one at a time, starting with an introduction and then moving to technical questions 
+based on the candidate's skills and experience, followed by behavioral questions.
+
+Resume Summary:
+Skills: {resume_data.get('skills', {}).get('skills', [])[:10]}
+Experience: {[exp.get('title', '') for exp in resume_data.get('experience', [])][:3]}
+Projects: {[proj.get('title', '') for proj in resume_data.get('projects', [])][:3]}
+
+Start with a friendly greeting and ask the first question. Keep questions concise and one at a time.
+"""
+        
+        headers = {
+            "Authorization": f"Bearer {GROQ_API_KEY}",
+            "Content-Type": "application/json"
+        }
+
+        data = {
+            "model": "llama3-70b-8192",
+            "messages": [
+                {"role": "system", "content": "You are a professional technical interviewer. Ask relevant questions based on the resume, one at a time. After each answer, provide brief feedback and a score from 1-10 based on answer quality."},
+                {"role": "user", "content": prompt}
+            ],
+            "temperature": 0.7
+        }
+
+        # Call Groq API
+        response = requests.post(GROQ_API_URL, headers=headers, json=data)
+        response.raise_for_status()
+        result = response.json()
+
+        if "choices" in result and len(result["choices"]) > 0:
+            content = result["choices"][0]["message"]["content"]
+            
+            # Store interview state
+            interviews[interview_id] = {
+                "resume_data": resume_data,
+                "conversation_history": [
+                    {"role": "assistant", "content": content}
+                ],
+                "status": "in_progress",
+                "current_score": None,
+                "questions_asked": 0
+            }
+            
+            return jsonify({
+                "interviewId": interview_id,
+                "interviewStatus": "in_progress",
+                "message": content,
+                "feedback": "Let's begin the interview!",
+                "score": None
+            })
+        else:
+            logger.error("Invalid response from Groq API when starting interview.")
+            return jsonify({"error": "Failed to start interview"}), 500
+
+    except Exception as e:
+        logger.error(f"Error starting interview: {e}")
+        logger.error(traceback.format_exc())
+        return jsonify({'error': 'Failed to start interview'}), 500
+
+@app.route('/continue-interview', methods=['POST'])
+def continue_interview():
+    try:
+        data = request.json
+        interview_id = data.get('interviewId')
+        user_response = data.get('userResponse')
+        resume_data = data.get('resumeData')
+        conversation_history = data.get('conversationHistory', [])
+        
+        if not interview_id or not user_response:
+            return jsonify({"error": "Missing interview ID or user response"}), 400
+            
+        # Get interview state
+        interview = interviews.get(interview_id)
+        if not interview:
+            return jsonify({"error": "Invalid interview ID"}), 404
+            
+        # Prepare conversation history for LLM
+        messages = [
+            {"role": "system", "content": f"""
+You are conducting an interview based on this resume:
+Skills: {resume_data.get('skills', {}).get('skills', [])}
+Experience: {resume_data.get('experience', [])}
+Projects: {resume_data.get('projects', [])}
+
+Ask relevant follow-up questions one at a time. After each answer:
+1. Provide brief constructive feedback
+2. Rate the answer from 1-10 based on:
+   - Technical accuracy (for technical questions)
+   - Clarity and structure
+   - Relevance to question
+   - Demonstration of skills/experience
+3. Then ask the next question
+"""}
+        ]
+        
+        # Add previous conversation
+        for msg in conversation_history:
+            if msg['type'] == 'interviewer':
+                messages.append({"role": "assistant", "content": msg['content']})
+            else:
+                messages.append({"role": "user", "content": msg['content']})
+        
+        # Add current response
+        messages.append({"role": "user", "content": user_response})
+        
+        # Call Groq API
+        headers = {
+            "Authorization": f"Bearer {GROQ_API_KEY}",
+            "Content-Type": "application/json"
+        }
+
+        data = {
+            "model": "llama3-70b-8192",
+            "messages": messages,
+            "temperature": 0.7
+        }
+
+        response = requests.post(GROQ_API_URL, headers=headers, json=data)
+        response.raise_for_status()
+        result = response.json()
+
+        if "choices" in result and len(result["choices"]) > 0:
+            content = result["choices"][0]["message"]["content"]
+            
+            # Extract score from response (LLM should include something like "Score: 8/10")
+            score_match = re.search(r'Score:\s*(\d+)/10', content)
+            score = int(score_match.group(1)) if score_match else None
+            
+            # Update interview state
+            interview['conversation_history'].append({"role": "assistant", "content": content})
+            interview['questions_asked'] += 1
+            
+            # End interview after 5 questions (adjust as needed)
+            if interview['questions_asked'] >= 5:
+                interview['status'] = 'completed'
+                content += "\n\nThank you for your time! This concludes our interview."
+            
+            return jsonify({
+                "interviewStatus": interview['status'],
+                "message": content,
+                "feedback": "Good answer!" if score and score >= 7 else "Needs improvement",
+                "score": score
+            })
+        else:
+            logger.error("Invalid response from Groq API when continuing interview.")
+            return jsonify({"error": "Failed to continue interview"}), 500
+
+    except Exception as e:
+        logger.error(f"Error continuing interview: {e}")
+        logger.error(traceback.format_exc())
+        return jsonify({'error': 'Failed to continue interview'}), 500
+
+# Health check endpoint
+@app.route('/health', methods=['GET'])
+def health_check():
+    return jsonify({"status": "healthy", "version": "1.0.0"})
+
 # Run the app
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=True)
