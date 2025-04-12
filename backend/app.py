@@ -86,11 +86,11 @@ def parse_resume():
             logger.warning("Resume too long, truncating text.")
             resume_text = resume_text[:max_text_length]
 
-        # Construct prompt
+        # Construct prompt to extract name along with other details
         prompt = f"""
 Extract the following information from this resume text and return only the JSON object (no explanation, no markdown code blocks).
 
-Keys: "skills", "experience", and "projects".
+Keys: "name", "skills", "experience", and "projects".
 
 Resume Text:
 \"\"\"
@@ -106,7 +106,7 @@ Resume Text:
         data = {
             "model": "llama3-70b-8192",
             "messages": [
-                {"role": "system", "content": "You are an expert at parsing resumes and returning structured JSON output."},
+                {"role": "system", "content": "You are an expert at parsing resumes and returning structured JSON output with the candidate's name."},
                 {"role": "user", "content": prompt}
             ],
             "temperature": 0.3
@@ -152,21 +152,30 @@ def start_interview():
         if not resume_data:
             return jsonify({"error": "No resume data provided"}), 400
         
+        # Get candidate name (default to "Candidate" if not found)
+        candidate_name = resume_data.get('name', 'Candidate')
+        if isinstance(candidate_name, list):
+            candidate_name = candidate_name[0] if candidate_name else 'Candidate'
+        elif not isinstance(candidate_name, str):
+            candidate_name = 'Candidate'
+        
         # Generate interview ID
         interview_id = str(uuid.uuid4())
         
-        # Construct initial prompt
+        # Construct initial prompt with personalized greeting
         prompt = f"""
-You are a professional interviewer conducting a technical and behavioral interview based on the following resume. 
+You are a professional interviewer conducting a technical and behavioral interview. 
+Start with a friendly greeting addressing the candidate by name ("Hello {candidate_name}") and then ask the first question. 
 Ask relevant questions one at a time, starting with an introduction and then moving to technical questions 
 based on the candidate's skills and experience, followed by behavioral questions.
 
 Resume Summary:
+Name: {candidate_name}
 Skills: {resume_data.get('skills', {}).get('skills', [])[:10]}
 Experience: {[exp.get('title', '') for exp in resume_data.get('experience', [])][:3]}
 Projects: {[proj.get('title', '') for proj in resume_data.get('projects', [])][:3]}
 
-Start with a friendly greeting and ask the first question. Keep questions concise and one at a time.
+Keep questions concise and one at a time. Address the candidate by name when appropriate.
 """
         
         headers = {
@@ -177,7 +186,10 @@ Start with a friendly greeting and ask the first question. Keep questions concis
         data = {
             "model": "llama3-70b-8192",
             "messages": [
-                {"role": "system", "content": "You are a professional technical interviewer. Ask relevant questions based on the resume, one at a time. After each answer, provide brief feedback and a score from 1-10 based on answer quality."},
+                {"role": "system", "content": f"""You are a professional technical interviewer conducting an interview with {candidate_name}. 
+Address them by name when appropriate unless they prefer otherwise. 
+Ask relevant questions based on the resume, one at a time. 
+After each answer, provide brief feedback and a score from 1-10 based on answer quality."""},
                 {"role": "user", "content": prompt}
             ],
             "temperature": 0.7
@@ -191,9 +203,10 @@ Start with a friendly greeting and ask the first question. Keep questions concis
         if "choices" in result and len(result["choices"]) > 0:
             content = result["choices"][0]["message"]["content"]
             
-            # Store interview state
+            # Store interview state with candidate name
             interviews[interview_id] = {
                 "resume_data": resume_data,
+                "candidate_name": candidate_name,
                 "conversation_history": [
                     {"role": "assistant", "content": content}
                 ],
@@ -224,8 +237,6 @@ def continue_interview():
         data = request.json
         interview_id = data.get('interviewId')
         user_response = data.get('userResponse')
-        resume_data = data.get('resumeData')
-        conversation_history = data.get('conversationHistory', [])
         
         if not interview_id or not user_response:
             return jsonify({"error": "Missing interview ID or user response"}), 400
@@ -235,14 +246,18 @@ def continue_interview():
         if not interview:
             return jsonify({"error": "Invalid interview ID"}), 404
             
+        resume_data = interview['resume_data']
+        candidate_name = interview.get('candidate_name', 'Candidate')
+        
         # Prepare conversation history for LLM
         messages = [
             {"role": "system", "content": f"""
-You are conducting an interview based on this resume:
-Skills: {resume_data.get('skills', {}).get('skills', [])}
+You are conducting an interview with {candidate_name} based on this resume:
+Skills: {resume_data.get('skills', [])}
 Experience: {resume_data.get('experience', [])}
 Projects: {resume_data.get('projects', [])}
 
+Address the candidate by name when appropriate (e.g., "That's a good point, {candidate_name}"). 
 Ask relevant follow-up questions one at a time. After each answer:
 1. Provide brief constructive feedback
 2. Rate the answer from 1-10 based on:
@@ -255,11 +270,8 @@ Ask relevant follow-up questions one at a time. After each answer:
         ]
         
         # Add previous conversation
-        for msg in conversation_history:
-            if msg['type'] == 'interviewer':
-                messages.append({"role": "assistant", "content": msg['content']})
-            else:
-                messages.append({"role": "user", "content": msg['content']})
+        for msg in interview['conversation_history']:
+            messages.append({"role": msg["role"], "content": msg["content"]})
         
         # Add current response
         messages.append({"role": "user", "content": user_response})
@@ -283,7 +295,7 @@ Ask relevant follow-up questions one at a time. After each answer:
         if "choices" in result and len(result["choices"]) > 0:
             content = result["choices"][0]["message"]["content"]
             
-            # Extract score from response (LLM should include something like "Score: 8/10")
+            # Extract score from response
             score_match = re.search(r'Score:\s*(\d+)/10', content)
             score = int(score_match.group(1)) if score_match else None
             
@@ -291,10 +303,10 @@ Ask relevant follow-up questions one at a time. After each answer:
             interview['conversation_history'].append({"role": "assistant", "content": content})
             interview['questions_asked'] += 1
             
-            # End interview after 5 questions (adjust as needed)
+            # End interview after 5 questions
             if interview['questions_asked'] >= 5:
                 interview['status'] = 'completed'
-                content += "\n\nThank you for your time! This concludes our interview."
+                content += f"\n\nThank you for your time, {candidate_name}! This concludes our interview."
             
             return jsonify({
                 "interviewStatus": interview['status'],

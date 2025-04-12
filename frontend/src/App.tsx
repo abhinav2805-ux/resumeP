@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Upload, FileText, Briefcase, Code, FolderGit2, AlertCircle, Info, MessageSquare, Award, Send } from 'lucide-react';
-
+import { useNavigate } from 'react-router-dom';
+import { Upload, FileText, Briefcase, Code, FolderGit2, AlertCircle, Info, MessageSquare } from 'lucide-react';
+import './index.css'
 interface ParsedResume {
   skills: {
     skills?: string[];
@@ -18,28 +19,14 @@ interface ParsedResume {
   }[];
 }
 
-interface InterviewMessage {
-  type: 'interviewer' | 'candidate';
-  content: string;
-  feedback?: string;
-  score?: number;
-}
-
 function App() {
+  const navigate = useNavigate();
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [debug, setDebug] = useState<string | null>(null);
   const [parsedData, setParsedData] = useState<ParsedResume | null>(null);
-  
-  // Interview states
-  const [interviewActive, setInterviewActive] = useState(false);
-  const [interviewId, setInterviewId] = useState<string | null>(null);
-  const [interviewStatus, setInterviewStatus] = useState<'not_started' | 'in_progress' | 'completed'>('not_started');
-  const [interviewMessages, setInterviewMessages] = useState<InterviewMessage[]>([]);
-  const [userResponse, setUserResponse] = useState('');
   const [interviewLoading, setInterviewLoading] = useState(false);
-  const [interviewScore, setInterviewScore] = useState<number | null>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setError(null);
@@ -135,19 +122,16 @@ function App() {
         throw new Error(data.error || 'Failed to start interview');
       }
 
-      setInterviewId(data.interviewId);
-      setInterviewStatus(data.interviewStatus);
-      setInterviewActive(true);
+      // Store parsed resume data in localStorage to access it in the interview page
+      localStorage.setItem('resumeData', JSON.stringify(parsedData));
       
-      // Add the first message from the interviewer
-      setInterviewMessages([
-        {
-          type: 'interviewer',
-          content: data.message,
-          feedback: data.feedback,
-          score: data.score
-        }
-      ]);
+      // Navigate to the interview page with the interview ID
+      navigate(`/interview/${data.interviewId}`, { 
+        state: { 
+          initialMessage: data.message,
+          interviewStatus: data.interviewStatus 
+        } 
+      });
       
     } catch (error) {
       console.error('Error starting interview:', error);
@@ -155,82 +139,6 @@ function App() {
     } finally {
       setInterviewLoading(false);
     }
-  };
-
-  const sendResponse = async () => {
-    if (!parsedData || !interviewId || !userResponse.trim()) return;
-    
-    setInterviewLoading(true);
-    
-    // Add user's message to the conversation
-    const updatedMessages = [
-      ...interviewMessages,
-      {
-        type: 'candidate',
-        content: userResponse
-      }
-    ];
-    setInterviewMessages(updatedMessages);
-    setUserResponse('');
-    
-    try {
-      const response = await fetch('http://localhost:5000/continue-interview', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          resumeData: parsedData,
-          interviewId: interviewId,
-          userResponse: userResponse,
-          conversationHistory: interviewMessages
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to continue interview');
-      }
-
-      setInterviewStatus(data.interviewStatus);
-      
-      // Add interviewer's response with feedback
-      setInterviewMessages([
-        ...updatedMessages,
-        {
-          type: 'interviewer',
-          content: data.message,
-          feedback: data.feedback,
-          score: data.score
-        }
-      ]);
-      
-      // Update total score if provided
-      if (data.score) {
-        // If we already have a score, average them
-        if (interviewScore !== null) {
-          setInterviewScore((interviewScore + data.score) / 2);
-        } else {
-          setInterviewScore(data.score);
-        }
-      }
-      
-    } catch (error) {
-      console.error('Error in interview response:', error);
-      setError(error instanceof Error ? error.message : 'Failed to get interview response. Please try again.');
-    } finally {
-      setInterviewLoading(false);
-    }
-  };
-
-  const resetInterview = () => {
-    setInterviewActive(false);
-    setInterviewId(null);
-    setInterviewStatus('not_started');
-    setInterviewMessages([]);
-    setUserResponse('');
-    setInterviewScore(null);
   };
 
   return (
@@ -255,38 +163,36 @@ function App() {
           </div>
         )}
 
-        {!interviewActive && (
-          <form onSubmit={handleSubmit} className="mb-12">
-            <div className="max-w-xl mx-auto">
-              <label className={`flex flex-col items-center justify-center w-full h-64 border-2 border-dashed rounded-lg cursor-pointer bg-white hover:bg-gray-50 transition-colors ${error ? 'border-red-300' : file ? 'border-green-500' : 'border-gray-300'}`}>
-                <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                  <Upload className={`w-12 h-12 mb-4 ${error ? 'text-red-500' : file ? 'text-green-500' : 'text-gray-400'}`} />
-                  <p className="mb-2 text-sm text-gray-500"><span className="font-semibold">Click to upload</span> or drag and drop</p>
-                  <p className="text-xs text-gray-500">PDF or DOCX (MAX. 10MB)</p>
-                </div>
-                <input type="file" className="hidden" accept=".pdf,.docx" onChange={handleFileChange} />
-              </label>
+        <form onSubmit={handleSubmit} className="mb-12">
+          <div className="max-w-xl mx-auto">
+            <label className={`flex flex-col items-center justify-center w-full h-64 border-2 border-dashed rounded-lg cursor-pointer bg-white hover:bg-gray-50 transition-colors ${error ? 'border-red-300' : file ? 'border-green-500' : 'border-gray-300'}`}>
+              <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                <Upload className={`w-12 h-12 mb-4 ${error ? 'text-red-500' : file ? 'text-green-500' : 'text-gray-400'}`} />
+                <p className="mb-2 text-sm text-gray-500"><span className="font-semibold">Click to upload</span> or drag and drop</p>
+                <p className="text-xs text-gray-500">PDF or DOCX (MAX. 10MB)</p>
+              </div>
+              <input type="file" className="hidden" accept=".pdf,.docx" onChange={handleFileChange} />
+            </label>
 
-              {file && !error && (
-                <div className="mt-4 flex items-center justify-between bg-white p-4 rounded-lg border border-gray-200">
-                  <div className="flex items-center">
-                    <FileText className="w-5 h-5 text-gray-500 mr-2" />
-                    <span className="text-sm text-gray-700">{file.name}</span>
-                  </div>
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    className={`px-4 py-2 rounded-md text-white text-sm font-medium ${loading ? 'bg-gray-400' : 'bg-blue-600 hover:bg-blue-700'} transition-colors`}
-                  >
-                    {loading ? 'Processing...' : 'Parse Resume'}
-                  </button>
+            {file && !error && (
+              <div className="mt-4 flex items-center justify-between bg-white p-4 rounded-lg border border-gray-200">
+                <div className="flex items-center">
+                  <FileText className="w-5 h-5 text-gray-500 mr-2" />
+                  <span className="text-sm text-gray-700">{file.name}</span>
                 </div>
-              )}
-            </div>
-          </form>
-        )}
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className={`px-4 py-2 rounded-md text-white text-sm font-medium ${loading ? 'bg-gray-400' : 'bg-blue-600 hover:bg-blue-700'} transition-colors`}
+                >
+                  {loading ? 'Processing...' : 'Parse Resume'}
+                </button>
+              </div>
+            )}
+          </div>
+        </form>
 
-        {parsedData && !interviewActive && (
+        {parsedData && (
           <div className="mb-12">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
               <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
@@ -371,120 +277,6 @@ function App() {
                 {interviewLoading ? 'Starting...' : 'Start Virtual Interview'}
               </button>
             </div>
-          </div>
-        )}
-
-        {interviewActive && (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-12">
-            <div className="border-b border-gray-200 p-4 flex justify-between items-center">
-              <div className="flex items-center">
-                <Briefcase className="w-5 h-5 text-green-500 mr-2" />
-                <h2 className="text-xl font-semibold text-gray-900">Virtual Interview</h2>
-              </div>
-              
-              {interviewScore !== null && (
-                <div className="flex items-center bg-blue-50 px-3 py-1 rounded-full">
-                  <Award className="w-4 h-4 text-blue-500 mr-1" />
-                  <span className="text-sm font-medium text-blue-700">Score: {interviewScore.toFixed(1)}/10</span>
-                </div>
-              )}
-              
-              {interviewStatus === 'completed' && (
-                <button 
-                  onClick={resetInterview}
-                  className="px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded-md text-sm text-gray-700"
-                >
-                  Restart Interview
-                </button>
-              )}
-            </div>
-            
-            <div className="p-4 max-h-96 overflow-y-auto">
-              <div className="space-y-4">
-                {interviewMessages.map((message, index) => (
-                  <div 
-                    key={index} 
-                    className={`flex ${message.type === 'interviewer' ? 'justify-start' : 'justify-end'}`}
-                  >
-                    <div 
-                      className={`max-w-3/4 rounded-lg p-4 ${
-                        message.type === 'interviewer' 
-                          ? 'bg-gray-100 text-gray-800' 
-                          : 'bg-blue-600 text-white'
-                      }`}
-                    >
-                      <p className="whitespace-pre-wrap">{message.content}</p>
-                      
-                      {message.feedback && message.type === 'interviewer' && index > 0 && (
-                        <div className="mt-2 p-2 bg-white bg-opacity-20 rounded">
-                          <p className="text-xs font-semibold">Feedback:</p>
-                          <p className="text-xs">{message.feedback}</p>
-                        </div>
-                      )}
-                      
-                      {message.score !== undefined && message.type === 'interviewer' && index > 0 && (
-                        <div className="mt-2 flex items-center">
-                          <Award className={`w-4 h-4 ${message.type === 'interviewer' ? 'text-blue-500' : 'text-white'} mr-1`} />
-                          <span className="text-xs font-medium">Score: {message.score}/10</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-                
-                {interviewLoading && (
-                  <div className="flex justify-start">
-                    <div className="bg-gray-100 text-gray-800 rounded-lg p-4">
-                      <p>Thinking...</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-            
-            {interviewStatus === 'in_progress' ? (
-              <div className="border-t border-gray-200 p-4">
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={userResponse}
-                    onChange={(e) => setUserResponse(e.target.value)}
-                    disabled={interviewLoading}
-                    placeholder="Type your response here..."
-                    className="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    onKeyPress={(e) => {
-                      if (e.key === 'Enter' && !interviewLoading) {
-                        sendResponse();
-                      }
-                    }}
-                  />
-                  <button
-                    onClick={sendResponse}
-                    disabled={interviewLoading || !userResponse.trim()}
-                    className={`px-4 py-2 rounded-md text-white ${
-                      interviewLoading || !userResponse.trim()
-                        ? 'bg-gray-400'
-                        : 'bg-blue-600 hover:bg-blue-700'
-                    }`}
-                  >
-                    <Send className="w-5 h-5" />
-                  </button>
-                </div>
-              </div>
-            ) : interviewStatus === 'completed' && (
-              <div className="border-t border-gray-200 p-4 bg-green-50">
-                <div className="text-center">
-                  <h3 className="text-lg font-medium text-green-800">Interview Completed</h3>
-                  <p className="text-green-700">Your final score: {interviewScore?.toFixed(1) || 'N/A'}/10</p>
-                  <button
-                    onClick={resetInterview}
-                    className="mt-3 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md"
-                  >
-                    Start New Interview
-                  </button>
-                </div>
-              </div>
-            )}
           </div>
         )}
       </div>
