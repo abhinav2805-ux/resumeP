@@ -2,7 +2,9 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Upload, FileText, Briefcase, Code, FolderGit2, AlertCircle, Info, MessageSquare } from 'lucide-react';
 import './index.css'
+
 interface ParsedResume {
+  name?: string;
   skills: {
     skills?: string[];
   };
@@ -74,6 +76,7 @@ function App() {
 
       // Update state with defaults for safety
       setParsedData({
+        name: data.name || '',
         skills: {
           skills: Array.isArray(data.skills) ? data.skills : [],
         },
@@ -194,6 +197,12 @@ function App() {
 
         {parsedData && (
           <div className="mb-12">
+            {parsedData.name && (
+              <div className="text-center mb-6">
+                <h2 className="text-2xl font-bold text-gray-900">Hello, {parsedData.name}!</h2>
+                <p className="text-gray-600">Here's what we found in your resume:</p>
+              </div>
+            )}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
               <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
                 <div className="flex items-center mb-4">
