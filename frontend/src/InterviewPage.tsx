@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { Briefcase, Award, Send, MessageSquare, ArrowLeft, X, List, AlertTriangle } from 'lucide-react';
+import { Briefcase, Award, Send, MessageSquare, ArrowLeft, X, List, AlertTriangle, Volume2, VolumeX } from 'lucide-react';
 import './index.css'
 
 interface ParsedResume {
@@ -51,6 +51,7 @@ function InterviewPage() {
     const [error, setError] = useState<string | null>(null);
     const [questionsAsked, setQuestionsAsked] = useState(0);
     const [lowScoreStreak, setLowScoreStreak] = useState(0);
+    const [isMuted, setIsMuted] = useState(false); // Mute state
 
     useEffect(() => {
         try {
@@ -69,6 +70,7 @@ function InterviewPage() {
                         isTyping: false
                     }
                 ]);
+                speakText(state.initialMessage); // Speak the first message
                 setQuestionsAsked(1);
             }
         } catch (error) {
@@ -77,12 +79,20 @@ function InterviewPage() {
         }
     }, [state]);
 
+    const speakText = (text: string) => {
+        if (isMuted) return;
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'en-US';
+        utterance.rate = 1;
+        window.speechSynthesis.cancel(); // stop any ongoing speech
+        window.speechSynthesis.speak(utterance);
+    };
+
     const sendResponse = async () => {
         if (!parsedData || !interviewId || !userResponse.trim()) return;
 
         setInterviewLoading(true);
 
-        // Add user message and typing indicator
         const updatedMessages = [
             ...interviewMessages,
             {
@@ -100,43 +110,41 @@ function InterviewPage() {
         setUserResponse('');
 
         try {
-            // Simulate human response time (1-3 seconds)
             await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000));
 
             const response = await fetch('http://localhost:5000/continue-interview', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     resumeData: parsedData,
-                    interviewId: interviewId,
-                    userResponse: userResponse,
+                    interviewId,
+                    userResponse,
                     conversationHistory: interviewMessages.filter(m => !m.isTyping)
                 }),
             });
 
             const data = await response.json();
 
-            if (!response.ok) {
-                throw new Error(data.error || 'Failed to continue interview');
-            }
+            if (!response.ok) throw new Error(data.error || 'Failed to continue interview');
 
             setInterviewStatus(data.interviewStatus);
             setQuestionsAsked(prev => prev + 1);
             setLowScoreStreak(data.lowScoreStreak || 0);
 
-            // Replace typing indicator with actual response
-            setInterviewMessages(prev => [
-                ...prev.slice(0, -1),
-                {
-                    type: 'interviewer',
-                    content: data.message,
-                    feedback: data.feedback,
-                    score: data.score,
-                    isTyping: false
-                }
-            ]);
+            setInterviewMessages(prev => {
+                const updated = [
+                    ...prev.slice(0, -1),
+                    {
+                        type: 'interviewer',
+                        content: data.message,
+                        feedback: data.feedback,
+                        score: data.score,
+                        isTyping: false
+                    }
+                ];
+                speakText(data.message); // TTS after interviewer response
+                return updated;
+            });
 
             if (data.score) {
                 setInterviewScore(prev => prev ? (prev + data.score) / 2 : data.score);
@@ -153,7 +161,6 @@ function InterviewPage() {
     const endInterview = async () => {
         setInterviewLoading(true);
         try {
-            // Add typing indicator
             setInterviewMessages(prev => [
                 ...prev,
                 {
@@ -162,20 +169,19 @@ function InterviewPage() {
                     isTyping: true
                 }
             ]);
-
-            // Simulate human response time
             await new Promise(resolve => setTimeout(resolve, 1500));
-
+            const closing = "Thank you for your time today. It's been great learning more about your experience. We'll wrap up here - I appreciate you taking the time to speak with me. Best of luck with everything!";
             setInterviewMessages(prev => [
                 ...prev.slice(0, -1),
                 {
                     type: 'interviewer',
-                    content: "Thank you for your time today. It's been great learning more about your experience. We'll wrap up here - I appreciate you taking the time to speak with me. Best of luck with everything!",
+                    content: closing,
                     feedback: "Interview completed",
                     score: interviewScore || undefined,
                     isTyping: false
                 }
             ]);
+            speakText(closing);
             setInterviewStatus('completed');
         } catch (error) {
             console.error('Error ending interview:', error);
@@ -190,43 +196,55 @@ function InterviewPage() {
     };
 
     return (
-        <div className="min-h-screen bg-gray-50">
-            <div className="max-w-4xl mx-auto py-12 px-4">
-                <div className="mb-8 flex justify-between items-center">
-                    <button
-                        onClick={() => navigate('/')}
-                        className="flex items-center text-gray-700 hover:text-gray-900"
-                    >
-                        <ArrowLeft className="w-5 h-5 mr-1" />
-                        Back to Home
-                    </button>
-                    <div className="flex items-center gap-4">
-                        {interviewStatus === 'in_progress' && (
-                            <div className="flex items-center gap-2">
-                                <div className="flex items-center bg-gray-100 px-3 py-1 rounded-full text-sm">
-                                    <List className="w-4 h-4 mr-1 text-gray-600" />
-                                    <span>Question {questionsAsked}/25</span>
-                                </div>
-                                {lowScoreStreak >= 2 && (
-                                    <div className="flex items-center bg-yellow-50 px-3 py-1 rounded-full text-sm text-yellow-700">
-                                        <AlertTriangle className="w-4 h-4 mr-1" />
-                                        <span>Low score streak: {lowScoreStreak}</span>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-                        {interviewStatus === 'in_progress' && (
-                            <button
-                                onClick={endInterview}
-                                disabled={interviewLoading}
-                                className="flex items-center px-3 py-1.5 bg-red-50 text-red-600 hover:bg-red-100 rounded-md text-sm font-medium"
-                            >
-                                <X className="w-4 h-4 mr-1" />
-                                End Interview
-                            </button>
-                        )}
-                    </div>
-                </div>
+      <div className="min-h-screen bg-gray-50">
+      <div className="max-w-4xl mx-auto py-12 px-4">
+          <div className="mb-8 flex justify-between items-center">
+              <button
+                  onClick={() => navigate('/')}
+                  className="flex items-center text-gray-700 hover:text-gray-900"
+              >
+                  <ArrowLeft className="w-5 h-5 mr-1" />
+                  Back to Home
+              </button>
+              <div className="flex items-center gap-4">
+                  <button
+                      onClick={() => setIsMuted(!isMuted)}
+                      className="flex items-center px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded-md text-sm"
+                  >
+                      {isMuted ? (
+                          <>
+                              <VolumeX className="w-4 h-4 mr-1" /> Unmute
+                          </>
+                      ) : (
+                          <>
+                              <Volume2 className="w-4 h-4 mr-1" /> Mute
+                          </>
+                      )}
+                  </button>
+                  {interviewStatus === 'in_progress' && (
+                      <>
+                          <div className="flex items-center bg-gray-100 px-3 py-1 rounded-full text-sm">
+                              <List className="w-4 h-4 mr-1 text-gray-600" />
+                              <span>Question {questionsAsked}/25</span>
+                          </div>
+                          {lowScoreStreak >= 2 && (
+                              <div className="flex items-center bg-yellow-50 px-3 py-1 rounded-full text-sm text-yellow-700">
+                                  <AlertTriangle className="w-4 h-4 mr-1" />
+                                  <span>Low score streak: {lowScoreStreak}</span>
+                              </div>
+                          )}
+                          <button
+                              onClick={endInterview}
+                              disabled={interviewLoading}
+                              className="flex items-center px-3 py-1.5 bg-red-50 text-red-600 hover:bg-red-100 rounded-md text-sm font-medium"
+                          >
+                              <X className="w-4 h-4 mr-1" />
+                              End Interview
+                          </button>
+                      </>
+                  )}
+              </div>
+          </div>
 
                 <div className="text-center mb-8">
                     <h1 className="text-3xl font-bold text-gray-900 mb-2">
