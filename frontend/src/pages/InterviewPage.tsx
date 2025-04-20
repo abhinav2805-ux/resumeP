@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Send, User, Bot, XCircle, Award, ArrowLeft, CheckCircle, AlertTriangle } from 'lucide-react';
+import { Send, User, Bot, XCircle, Award, ArrowLeft, CheckCircle, AlertTriangle, Mic, Volume2, VolumeX } from 'lucide-react';
 import { interviewService } from '../services/api';
 import { useAuth } from '../hooks/useAuth';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -10,6 +10,7 @@ interface Message {
   content: string;
   timestamp: Date;
   score?: number;
+  isPlaying?: boolean; // Add this
 }
 
 interface InterviewState {
@@ -32,6 +33,11 @@ const InterviewPage = () => {
   const [sendingResponse, setSendingResponse] = useState(false);
   const [interview, setInterview] = useState<InterviewState | null>(null);
   const [error, setError] = useState('');
+  const [isListening, setIsListening] = useState(false);
+  const [speechSupported] = useState('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
+  const recognitionRef = useRef<any>(null);
+  const synthRef = useRef<SpeechSynthesis | null>(null);
+  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -122,6 +128,41 @@ const InterviewPage = () => {
       textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
     }
   }, [userInput]);
+
+  useEffect(() => {
+    // Initialize speech synthesis
+    synthRef.current = window.speechSynthesis;
+    
+    // Initialize speech recognition
+    if (speechSupported) {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      recognitionRef.current = new SpeechRecognition();
+      recognitionRef.current.continuous = true;
+      recognitionRef.current.interimResults = true;
+
+      recognitionRef.current.onresult = (event: any) => {
+        const transcript = Array.from(event.results)
+          .map((result: any) => result[0])
+          .map(result => result.transcript)
+          .join('');
+        
+        setUserInput(transcript);
+      };
+
+      recognitionRef.current.onend = () => {
+        setIsListening(false);
+      };
+    }
+
+    return () => {
+      if (synthRef.current) {
+        synthRef.current.cancel();
+      }
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+    };
+  }, [speechSupported]);
 
   const handleTextareaKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -231,6 +272,85 @@ const InterviewPage = () => {
     }).format(date);
   };
 
+  const toggleSpeech = (message: Message) => {
+    if (synthRef.current) {
+      if (synthRef.current.speaking) {
+        synthRef.current.cancel();
+        setInterview(prev => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            conversationHistory: prev.conversationHistory.map(msg => ({
+              ...msg,
+              isPlaying: false
+            }))
+          };
+        });
+        return;
+      }
+
+      const utterance = new SpeechSynthesisUtterance(message.content);
+      utteranceRef.current = utterance;
+      
+      utterance.onend = () => {
+        setInterview(prev => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            conversationHistory: prev.conversationHistory.map(msg => ({
+              ...msg,
+              isPlaying: false
+            }))
+          };
+        });
+      };
+
+      setInterview(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          conversationHistory: prev.conversationHistory.map(msg => ({
+            ...msg,
+            isPlaying: msg === message
+          }))
+        };
+      });
+
+      synthRef.current.speak(utterance);
+    }
+  };
+
+  const toggleListening = () => {
+    if (!recognitionRef.current) return;
+  
+    if (isListening) {
+      recognitionRef.current.stop();
+    } else {
+      setUserInput('');
+      recognitionRef.current.start();
+  
+      // Add this handler for detecting silence
+      let silenceTimeout: NodeJS.Timeout;
+      recognitionRef.current.onresult = (event: any) => {
+        const transcript = Array.from(event.results)
+          .map((result: any) => result[0])
+          .map(result => result.transcript)
+          .join('');
+        
+        setUserInput(transcript);
+        
+        // Reset silence detection timer
+        clearTimeout(silenceTimeout);
+        silenceTimeout = setTimeout(() => {
+          if (isListening) {
+            recognitionRef.current.stop();
+          }
+        }, 2000); // Stop after 2 seconds of silence
+      };
+    }
+    setIsListening(!isListening);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[70vh]">
@@ -290,30 +410,42 @@ const InterviewPage = () => {
                 key={index}
                 className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
               >
-                <div
-                  className={`max-w-[80%] ${
-                    message.type === 'user'
-                      ? 'bg-blue-600/40 border-blue-500/50'
-                      : 'bg-gray-700/40 border-gray-600/50'
-                  } rounded-2xl px-6 py-4 border backdrop-blur-sm`}
-                >
-                  <div className="flex items-center gap-2 mb-2">
-                    <div
-                      className={`w-2 h-2 rounded-full ${
-                        message.type === 'user' ? 'bg-blue-400' : 'bg-purple-400'
-                      }`}
-                    />
-                    <span className="text-sm text-gray-400">
-                      {message.type === 'user' ? 'You' : 'AI Interviewer'} • {formatTime(message.timestamp)}
-                    </span>
-                  </div>
-                  <p className="text-gray-100 whitespace-pre-wrap">{message.content}</p>
-                  {message.score && (
-                    <div className="mt-2 flex items-center gap-2">
-                      <span className="text-xs text-cyan-400">Score: {message.score}</span>
-                    </div>
-                  )}
+            <div className="max-w-[80%] ${
+              message.type === 'user'
+                ? 'bg-blue-600/40 border-blue-500/50'
+                : 'bg-gray-700/40 border-gray-600/50'
+            } rounded-2xl px-6 py-4 border backdrop-blur-sm">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <div
+                    className={`w-2 h-2 rounded-full ${
+                      message.type === 'user' ? 'bg-blue-400' : 'bg-purple-400'
+                    }`}
+                  />
+                  <span className="text-sm text-gray-400">
+                    {message.type === 'user' ? 'You' : 'AI Interviewer'} • {formatTime(message.timestamp)}
+                  </span>
                 </div>
+                {message.type === 'interviewer' && (
+                  <button
+                    onClick={() => toggleSpeech(message)}
+                    className="text-gray-400 hover:text-gray-200 transition-colors"
+                  >
+                    {message.isPlaying ? (
+                      <VolumeX className="w-4 h-4" />
+                    ) : (
+                      <Volume2 className="w-4 h-4" />
+                    )}
+                  </button>
+                )}
+              </div>
+              <p className="text-gray-100 whitespace-pre-wrap">{message.content}</p>
+              {message.score && (
+                <div className="mt-2 flex items-center gap-2">
+                  <span className="text-xs text-cyan-400">Score: {message.score}</span>
+                </div>
+              )}
+            </div>
               </div>
             ))}
             {isTyping && (
@@ -331,9 +463,10 @@ const InterviewPage = () => {
           </div>
 
           {/* Input Area */}
-          <div className="border-t border-gray-700/50 p-4 bg-gray-800/30 backdrop-blur-sm">
+          {/* Input Area */}
+          <div className="p-4 border-t border-gray-700/50">
             <div className="flex gap-4">
-              <div className="flex-grow">
+              <div className="flex-grow relative">
                 <textarea
                   ref={textareaRef}
                   value={userInput}
@@ -341,29 +474,39 @@ const InterviewPage = () => {
                   onKeyDown={handleTextareaKeyDown}
                   placeholder="Type your response..."
                   className="w-full bg-gray-900/50 border border-gray-700/50 rounded-xl p-4 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-blue-500/50 transition-colors resize-none min-h-[60px]"
-                  disabled={sendingResponse || interview?.status === 'completed'}
+                  disabled={sendingResponse || interview?.status === 'completed' || isListening}
                 />
+                {speechSupported && (
+                  <button
+                    onClick={toggleListening}
+                    disabled={sendingResponse || interview?.status === 'completed'}
+                    className={`absolute right-4 top-4 p-2 rounded-full transition-colors ${
+                      isListening 
+                        ? 'bg-red-500/20 text-red-400' 
+                        : 'hover:bg-gray-700/50 text-gray-400 hover:text-gray-200'
+                    }`}
+                  >
+                    <Mic className={`w-4 h-4 ${isListening ? 'animate-pulse' : ''}`} />
+                  </button>
+                )}
               </div>
               <div className="flex gap-2">
                 <button
                   onClick={handleSendMessage}
                   disabled={!userInput.trim() || sendingResponse || interview?.status === 'completed'}
-                  className={`px-6 rounded-xl font-medium ${
-                    !userInput.trim() || sendingResponse || interview?.status === 'completed'
-                      ? 'bg-gray-700 text-gray-400 cursor-not-allowed'
-                      : 'bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700'
-                  } transition-all`}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
+                  <Send className="w-4 h-4" />
                   Send
                 </button>
-                {interview?.status !== 'completed' && (
-                  <button
-                    onClick={handleEndInterview}
-                    className="px-6 rounded-xl font-medium border border-red-500/50 text-red-400 hover:bg-red-500/10 transition-colors"
-                  >
-                    End
-                  </button>
-                )}
+                <button
+                  onClick={handleEndInterview}
+                  disabled={interview?.status === 'completed'}
+                  className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  <XCircle className="w-4 h-4" />
+                  End Test
+                </button>
               </div>
             </div>
           </div>
