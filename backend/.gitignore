@@ -1,8 +1,8 @@
 # Environment variables
 .env
-
+.my
 todo.txt
-
+.env*
 # Python
 __pycache__/
 *.py[cod]
