@@ -9,7 +9,7 @@ import AuthLayout from './layouts/AuthLayout';
 // Pages
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
-import SignupPage from './pages/SignupPage';
+import SignupPage from '../src/pages/SignUpPage';
 import DashboardPage from './pages/DashboardPage';
 import InterviewPage from './pages/InterviewPage';
 import ResumeUploadPage from './pages/ResumeUploadPage';

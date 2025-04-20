@@ -126,41 +126,63 @@ Resume Text:
 
 @app.route('/start-interview', methods=['POST'])
 def start_interview():
+    # Check if API key is configured
+    if not GROQ_API_KEY:
+        logger.error("GROQ_API_KEY is not set in environment variables.")
+        return jsonify({"error": "API key configuration error on server"}), 500
+
     try:
-        data = request.json
-        resume_data = data.get('resumeData')
-        
-        if not resume_data:
-            return jsonify({"error": "No resume data provided"}), 400
-        
+        # Validate input data
+        try:
+            data = request.get_json()
+            if not data:
+                raise ValueError("Request body must be valid JSON.")
+            resume_data = data.get('resumeData')
+            if not resume_data or not isinstance(resume_data, dict):
+                raise ValueError("Request JSON must include a valid 'resumeData' object.")
+        except Exception as json_err:
+            logger.error(f"JSON validation error: {json_err}")
+            return jsonify({"error": str(json_err)}), 400
+
+        # Generate interview ID
         interview_id = str(uuid.uuid4())
-        
-        prompt = f"""
-You are a professional interviewer conducting a conversation with {resume_data.get('name', 'the candidate')}.
 
-Guidelines:
-1. Start with a warm, personalized greeting
-2. Begin with easy icebreaker questions
-3. Ask follow-up questions based on responses
-4. Show genuine interest in answers
-5. Keep conversation flowing naturally
-6. Provide constructive feedback conversationally
-7. End naturally by thanking them
+        # Create initial prompt for the interviewer
+        system_prompt = f"""
+You are a senior technical interviewer at a leading technology company. Your role is to conduct a thorough professional interview with {resume_data.get('name', 'the candidate')}.
 
-Example flow:
-- "Hi [Name], how are you today?"
-- "I see you worked at [Company]. What was that like?"
-- "Interesting! Tell me more about [specific detail]"
-- "Let's discuss your [skill]. How have you applied it?"
+Candidate Profile:
+• Technical Skills: {', '.join(resume_data.get('skills', {}).get('skills', []))}
+• Professional Experience: {len(resume_data.get('experience', []))} positions
+• Project Portfolio: {len(resume_data.get('projects', []))} projects
 
-Resume Summary:
-Name: {resume_data.get('name', 'Not provided')}
-Skills: {resume_data.get('skills', {}).get('skills', [])[:10]}
-Experience: {[exp.get('title', '') for exp in resume_data.get('experience', [])][:3]}
+Interview Protocol:
+1. Begin with a professional introduction and establish rapport
+2. Progress through these interview stages:
+   - Technical competency assessment
+   - Problem-solving capabilities
+   - Project experience discussion
+   - Behavioral scenarios
+   - Leadership and collaboration
+3. Evaluate responses on:
+   - Technical accuracy (40%)
+   - Communication clarity (30%)
+   - Problem-solving approach (30%)
+4. Provide a numerical score (1-10) after each response
+5. Maintain professional demeanor and industry standards
+6. Ask follow-up questions based on candidate responses
+7. Focus on depth rather than breadth in technical discussions
 
-Start with a warm greeting and first question.
+Assessment Criteria:
+- Score 9-10: Exceptional response with comprehensive understanding
+- Score 7-8: Strong response with good technical depth
+- Score 5-6: Adequate response with some areas for improvement
+- Score 3-4: Below expectations, significant gaps identified
+- Score 1-2: Major concerns in understanding or communication
+
+Begin the interview professionally, following standard corporate protocol.
 """
-        
+
         headers = {
             "Authorization": f"Bearer {GROQ_API_KEY}",
             "Content-Type": "application/json"
@@ -169,8 +191,8 @@ Start with a warm greeting and first question.
         data = {
             "model": "llama3-70b-8192",
             "messages": [
-                {"role": "system", "content": "You are a professional but friendly interviewer conducting a natural conversation."},
-                {"role": "user", "content": prompt}
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": "Please start the interview."}
             ],
             "temperature": 0.7
         }
@@ -180,31 +202,26 @@ Start with a warm greeting and first question.
         result = response.json()
 
         if "choices" in result and len(result["choices"]) > 0:
-            content = result["choices"][0]["message"]["content"]
+            initial_message = result["choices"][0]["message"]["content"]
             
+            # Initialize interview state
             interviews[interview_id] = {
-                "resume_data": resume_data,
-                "conversation_history": [
-                    {"role": "assistant", "content": content}
-                ],
-                "status": "in_progress",
-                "current_score": None,
-                "questions_asked": 1,
-                "low_score_streak": 0
+                'status': 'in_progress',
+                'conversation_history': [{"role": "assistant", "content": initial_message}],
+                'questions_asked': 1,
+                'low_score_streak': 0
             }
-            
+
             return jsonify({
+                "message": initial_message,
                 "interviewId": interview_id,
-                "interviewStatus": "in_progress",
-                "message": content,
-                "feedback": "Let's begin our conversation!",
-                "score": None
+                "interviewStatus": "in_progress"
             })
         else:
             return jsonify({"error": "Failed to start interview"}), 500
 
     except Exception as e:
-        logger.error(f"Error: {e}\n{traceback.format_exc()}")
+        logger.error(f"Error in start_interview: {e}\n{traceback.format_exc()}")
         return jsonify({'error': 'Failed to start interview'}), 500
 
 @app.route('/continue-interview', methods=['POST'])
@@ -223,28 +240,40 @@ def continue_interview():
         if not interview:
             return jsonify({"error": "Invalid interview ID"}), 404
             
-        messages = [
-            {"role": "system", "content": f"""
-You're having a natural conversation with {resume_data.get('name', 'the candidate')}.
+        system_content = f"""
+You are conducting an ongoing technical interview with {resume_data.get('name', 'the candidate')}. 
 
-Rules:
-1. Respond like a human - show empathy and interest
-2. Build on previous answers naturally
-3. Ask thoughtful follow-up questions
-4. Provide feedback conversationally
-5. Maintain natural flow - don't just fire questions
-6. When appropriate, share relevant insights
-7. End naturally when time feels right
-8. Don't behave like a AI
+Interview Context:
+• Position Level: Senior Technical Role
+• Interview Stage: Technical & Behavioral Assessment
+• Areas of Focus: Technical Depth, Problem Solving, Leadership
 
-Current conversation:
+Interview Guidelines:
+1. Maintain professional corporate interview standards
+2. Evaluate responses using established rubric:
+   - Technical accuracy and depth
+   - Problem-solving methodology
+   - Communication effectiveness
+   - Real-world application
+3. Provide constructive follow-up questions
+4. Assess both technical competency and soft skills
+5. Consider candidate's background:
+   - Technical expertise: {', '.join(resume_data.get('skills', {}).get('skills', []))}
+   - Project experience: {len(resume_data.get('projects', []))} relevant projects
+6. Score responses objectively (1-10)
+7. Document specific strengths and areas for improvement
+
+Previous Discussion Context:
 {conversation_history}
 
-Candidate's last response:
+Latest Response Analysis:
 {user_response}
 
-Respond naturally as a human interviewer would.
-"""}
+Proceed with appropriate follow-up maintaining professional interview standards.
+"""
+
+        messages = [
+            {"role": "system", "content": system_content}
         ]
         
         for msg in conversation_history:

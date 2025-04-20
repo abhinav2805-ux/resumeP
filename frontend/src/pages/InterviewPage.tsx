@@ -36,86 +36,71 @@ const InterviewPage = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Mock resume data for demo purposes
-  const mockResumeData = {
-    name: 'Alex Johnson',
-    skills: ['JavaScript', 'React', 'Node.js', 'TypeScript', 'Express', 'MongoDB'],
-    experience: [
-      {
-        title: 'Senior Frontend Developer',
-        company: 'TechCorp Inc.',
-        duration: '2022 - Present'
-      },
-      {
-        title: 'Web Developer',
-        company: 'Digital Solutions',
-        duration: '2019 - 2022'
-      }
-    ],
-    projects: [
-      'E-commerce Platform',
-      'Content Management System',
-      'Real-time Chat Application'
-    ]
-  };
-
-  // Mock initial interview message
-  const mockInterviewStart = {
-    type: 'interviewer' as const,
-    content: `Hi ${currentUser?.displayName || 'there'}! I'm your interview practice partner today. I see you have experience with React and JavaScript. Let's start with something simple - can you tell me a bit about yourself and your background in web development?`,
-    timestamp: new Date()
-  };
-
   // Initialize interview
   useEffect(() => {
     const initializeInterview = async () => {
       try {
         setLoading(true);
         
-        // In a real app, fetch the interview from the backend or start a new one
-        // For demo purposes, we'll create a mock interview
-        if (interviewId === 'new') {
-          // Create a new interview
-          setTimeout(() => {
-            setInterview({
-              id: 'new-interview-id',
-              status: 'in_progress',
-              resumeData: mockResumeData,
-              conversationHistory: [mockInterviewStart],
-              currentScore: null,
-              lowScoreStreak: 0
-            });
-            setLoading(false);
-          }, 1500);
-        } else {
-          // Mock fetching an existing interview
-          setTimeout(() => {
-            setInterview({
-              id: interviewId || 'existing-interview-id',
-              status: 'in_progress',
-              resumeData: mockResumeData,
-              conversationHistory: [
-                mockInterviewStart,
-                {
-                  type: 'user',
-                  content: 'I have 5 years of experience in web development, focusing mainly on frontend technologies like React and Angular. I\'ve worked on various projects ranging from e-commerce platforms to real-time applications.',
-                  timestamp: new Date(Date.now() - 1000 * 60 * 5)
-                },
-                {
-                  type: 'interviewer',
-                  content: 'That sounds like great experience! Could you tell me about a challenging project you worked on and how you overcame the technical difficulties?',
-                  timestamp: new Date(Date.now() - 1000 * 60 * 4)
-                }
-              ],
-              currentScore: 7,
-              lowScoreStreak: 0
-            });
-            setLoading(false);
-          }, 1500);
+        if (!interviewId) {
+          throw new Error('No interview ID provided');
         }
+
+        // Get interview data from localStorage
+        const resumeData = JSON.parse(localStorage.getItem('resumeData') || '{}');
+        const storedState = JSON.parse(localStorage.getItem(`interview_${interviewId}`) || '{}');
+
+        // If we have stored conversation history, use it
+        if (storedState.conversationHistory?.length > 0) {
+          setInterview({
+            id: interviewId,
+            status: 'in_progress',
+            resumeData: resumeData,
+            conversationHistory: storedState.conversationHistory.map((msg: any) => ({
+              ...msg,
+              timestamp: new Date(msg.timestamp)
+            })),
+            currentScore: storedState.currentScore || null,
+            lowScoreStreak: storedState.lowScoreStreak || 0
+          });
+        } else {
+          // Start new interview
+          const response = await fetch('http://localhost:5000/start-interview', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ resumeData }),
+          });
+
+          if (!response.ok) {
+            throw new Error('Failed to start interview');
+          }
+
+          const data = await response.json();
+
+          const newInterview = {
+            id: interviewId,
+            status: 'in_progress',
+            resumeData: resumeData,
+            conversationHistory: [{
+              type: 'interviewer' as const,
+              content: data.message,
+              timestamp: new Date(),
+              score: null
+            }],
+            currentScore: null,
+            lowScoreStreak: 0
+          };
+
+          setInterview(newInterview);
+          localStorage.setItem(`interview_${interviewId}`, JSON.stringify(newInterview));
+        }
+
       } catch (error) {
         console.error('Error initializing interview:', error);
         setError('Failed to load the interview. Please try again.');
+      } finally {
         setLoading(false);
       }
     };
@@ -167,49 +152,49 @@ const InterviewPage = () => {
     setSendingResponse(true);
     setIsTyping(true);
     
-    // In a real app, we would send this to the backend
-    // For demo purposes, we'll simulate an API call with a timeout
     try {
-      setTimeout(() => {
-        const botResponse: Message = {
-          type: 'interviewer',
-          content: generateMockResponse(userInput),
-          timestamp: new Date(),
-          score: Math.floor(Math.random() * 4) + 7 // Random score between 7-10
+      const response = await fetch('http://localhost:5000/continue-interview', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          interviewId: interviewId,
+          userResponse: userInput,
+          resumeData: JSON.parse(localStorage.getItem('resumeData') || '{}'),
+          conversationHistory: interview.conversationHistory
+        }),
+      });
+  
+      if (!response.ok) {
+        throw new Error('Failed to get response from interviewer');
+      }
+  
+      const data = await response.json();
+      
+      const botResponse: Message = {
+        type: 'interviewer',
+        content: data.message,
+        timestamp: new Date(),
+        score: data.score || interview.currentScore
+      };
+      
+      setInterview(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          conversationHistory: [...prev.conversationHistory, botResponse],
+          currentScore: botResponse.score || prev.currentScore
         };
-        
-        setInterview(prev => {
-          if (!prev) return prev;
-          return {
-            ...prev,
-            conversationHistory: [...prev.conversationHistory, botResponse],
-            currentScore: botResponse.score || prev.currentScore
-          };
-        });
-        
-        setIsTyping(false);
-        setSendingResponse(false);
-      }, 2000 + Math.random() * 2000); // Random delay between 2-4 seconds
+      });
+      
     } catch (error) {
       console.error('Error sending message:', error);
       setError('Failed to send your message. Please try again.');
-      setSendingResponse(false);
+    } finally {
       setIsTyping(false);
+      setSendingResponse(false);
     }
-  };
-
-  const generateMockResponse = (userInput: string): string => {
-    // Very simple mock response generation
-    const responses = [
-      "That's a great point! Could you elaborate on how you've applied these skills in your past projects?",
-      "I see you have experience with React. Can you tell me about a challenging React component you've built and how you approached it?",
-      "Interesting approach. How would you handle a situation where the requirements change midway through the project?",
-      "That's a good answer. Let's dive deeper into your experience with team collaboration. How do you handle disagreements within your team?",
-      "I appreciate your thoroughness. When it comes to performance optimization, what strategies have you implemented in your previous work?",
-      "That makes sense. Now, let's talk about your approach to learning new technologies. How do you stay updated with the rapidly evolving tech landscape?"
-    ];
-    
-    return responses[Math.floor(Math.random() * responses.length)];
   };
 
   const handleEndInterview = () => {
@@ -273,152 +258,116 @@ const InterviewPage = () => {
   if (!interview){ return null;}
 
   return (
-    <div className="bg-neutral-50 min-h-[calc(100vh-4rem)]">
-      <div className="max-w-4xl mx-auto">
-        {/* Header */}
-        <div className="bg-white shadow-sm border-b border-neutral-200 px-4 py-3 sticky top-0 z-10">
-          <div className="flex justify-between items-center">
+    <div className="min-h-screen bg-gray-900 text-gray-100">
+      <div className="max-w-6xl mx-auto py-12 px-4">
+        {/* Header Section */}
+        <div className="text-center mb-12">
+          <h1 className="text-5xl font-bold bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 bg-clip-text text-transparent mb-4">
+            Virtual Interview Session
+          </h1>
+          <div className="flex items-center justify-center gap-4 text-gray-400">
             <div className="flex items-center">
-              <button
-                onClick={() => navigate('/dashboard')}
-                className="mr-3 text-neutral-600 hover:text-neutral-800"
-              >
-                <ArrowLeft className="h-5 w-5" />
-              </button>
-              <h1 className="text-lg font-semibold text-neutral-800">Interview Practice</h1>
+              <div className={`w-2 h-2 rounded-full mr-2 ${
+                interview?.status === 'completed' ? 'bg-green-500' : 'bg-blue-500 animate-pulse'
+              }`} />
+              <span>Session {interviewId?.slice(0, 8)}</span>
             </div>
-            
-            {interview.status === 'in_progress' && (
-              <button
-                onClick={handleEndInterview}
-                className="text-sm text-neutral-600 hover:text-neutral-800 flex items-center"
-              >
-                <XCircle className="h-4 w-4 mr-1" />
-                End Interview
-              </button>
+            {interview?.currentScore && (
+              <div className="flex items-center">
+                <span className="text-cyan-400 font-semibold">{interview.currentScore}</span>
+                <span className="ml-1">pts</span>
+              </div>
             )}
           </div>
         </div>
-        
-        {/* Messages container */}
-        <div className="h-[calc(100vh-14rem)] overflow-y-auto p-4 space-y-6">
-          {interview.conversationHistory.map((message, index) => (
-            <div key={index} className={`flex ${message.type === 'interviewer' ? 'justify-start' : 'justify-end'}`}>
-              <div className={`max-w-[80%] ${message.type === 'interviewer' ? 'bg-white' : 'bg-primary-600 text-white'} rounded-2xl p-4 shadow-sm`}>
-                <div className="flex items-center mb-2">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center mr-2 ${message.type === 'interviewer' ? 'bg-neutral-100' : 'bg-primary-500'}`}>
-                    {message.type === 'interviewer' ? (
-                      <Bot className="h-4 w-4 text-neutral-700" />
-                    ) : (
-                      <User className="h-4 w-4 text-white" />
-                    )}
+
+        {/* Chat Interface */}
+        <div className="bg-gray-800/50 rounded-2xl border border-gray-700/50 backdrop-blur-sm overflow-hidden">
+          {/* Messages Container */}
+          <div className="h-[60vh] overflow-y-auto p-6 space-y-6">
+            {interview?.conversationHistory.map((message, index) => (
+              <div
+                key={index}
+                className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
+              >
+                <div
+                  className={`max-w-[80%] ${
+                    message.type === 'user'
+                      ? 'bg-blue-600/40 border-blue-500/50'
+                      : 'bg-gray-700/40 border-gray-600/50'
+                  } rounded-2xl px-6 py-4 border backdrop-blur-sm`}
+                >
+                  <div className="flex items-center gap-2 mb-2">
+                    <div
+                      className={`w-2 h-2 rounded-full ${
+                        message.type === 'user' ? 'bg-blue-400' : 'bg-purple-400'
+                      }`}
+                    />
+                    <span className="text-sm text-gray-400">
+                      {message.type === 'user' ? 'You' : 'AI Interviewer'} • {formatTime(message.timestamp)}
+                    </span>
                   </div>
-                  <div>
-                    <p className={`text-sm font-medium ${message.type === 'interviewer' ? 'text-neutral-800' : 'text-white'}`}>
-                      {message.type === 'interviewer' ? 'Interviewer' : 'You'}
-                    </p>
-                    <p className={`text-xs ${message.type === 'interviewer' ? 'text-neutral-400' : 'text-primary-100'}`}>
-                      {formatTime(message.timestamp)}
-                    </p>
-                  </div>
-                  {message.type === 'user' && message.score && (
-                    <div className="ml-auto flex items-center">
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                        message.score >= 8 ? 'bg-green-100 text-green-800' : 
-                        message.score >= 6 ? 'bg-yellow-100 text-yellow-800' : 
-                        'bg-red-100 text-red-800'
-                      }`}>
-                        {message.score}/10
-                      </span>
+                  <p className="text-gray-100 whitespace-pre-wrap">{message.content}</p>
+                  {message.score && (
+                    <div className="mt-2 flex items-center gap-2">
+                      <span className="text-xs text-cyan-400">Score: {message.score}</span>
                     </div>
                   )}
                 </div>
-                <div className={`text-sm whitespace-pre-wrap ${message.type === 'interviewer' ? 'text-neutral-700' : 'text-white'}`}>
-                  {message.content}
-                </div>
               </div>
-            </div>
-          ))}
-          
-          {/* Typing indicator */}
-          {isTyping && (
-            <div className="flex justify-start">
-              <div className="bg-white rounded-2xl p-4 shadow-sm max-w-[80%]">
-                <div className="flex items-center mb-2">
-                  <div className="w-8 h-8 bg-neutral-100 rounded-full flex items-center justify-center mr-2">
-                    <Bot className="h-4 w-4 text-neutral-700" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-neutral-800">Interviewer</p>
-                    <p className="text-xs text-neutral-400">Typing...</p>
+            ))}
+            {isTyping && (
+              <div className="flex justify-start">
+                <div className="bg-gray-700/40 border-gray-600/50 rounded-2xl px-6 py-4 border backdrop-blur-sm">
+                  <div className="flex gap-2">
+                    <span className="w-2 h-2 bg-purple-400 rounded-full animate-bounce"></span>
+                    <span className="w-2 h-2 bg-purple-400 rounded-full animate-bounce delay-100"></span>
+                    <span className="w-2 h-2 bg-purple-400 rounded-full animate-bounce delay-200"></span>
                   </div>
                 </div>
-                <div className="flex space-x-2">
-                  <div className="w-2 h-2 bg-neutral-300 rounded-full animate-bounce"></div>
-                  <div className="w-2 h-2 bg-neutral-300 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
-                  <div className="w-2 h-2 bg-neutral-300 rounded-full animate-bounce" style={{animationDelay: '0.4s'}}></div>
-                </div>
               </div>
-            </div>
-          )}
-          
-          <div ref={messagesEndRef} />
-        </div>
-        
-        {/* Input */}
-        {interview.status === 'in_progress' ? (
-          <div className="bg-white border-t border-neutral-200 p-4 sticky bottom-0">
-            <div className="flex items-end">
-              <div className="flex-grow relative">
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+
+          {/* Input Area */}
+          <div className="border-t border-gray-700/50 p-4 bg-gray-800/30 backdrop-blur-sm">
+            <div className="flex gap-4">
+              <div className="flex-grow">
                 <textarea
                   ref={textareaRef}
                   value={userInput}
-                  onChange={e => setUserInput(e.target.value)}
+                  onChange={(e) => setUserInput(e.target.value)}
                   onKeyDown={handleTextareaKeyDown}
                   placeholder="Type your response..."
-                  className="w-full border border-neutral-300 rounded-lg py-3 px-4 pr-12 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 resize-none max-h-32"
-                  rows={1}
-                  disabled={sendingResponse}
-                ></textarea>
+                  className="w-full bg-gray-900/50 border border-gray-700/50 rounded-xl p-4 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-blue-500/50 transition-colors resize-none min-h-[60px]"
+                  disabled={sendingResponse || interview?.status === 'completed'}
+                />
+              </div>
+              <div className="flex gap-2">
                 <button
                   onClick={handleSendMessage}
-                  disabled={!userInput.trim() || sendingResponse}
-                  className={`absolute right-3 bottom-3 text-white p-1.5 rounded-full ${
-                    userInput.trim() && !sendingResponse ? 'bg-primary-600 hover:bg-primary-700' : 'bg-neutral-300 cursor-not-allowed'
-                  }`}
+                  disabled={!userInput.trim() || sendingResponse || interview?.status === 'completed'}
+                  className={`px-6 rounded-xl font-medium ${
+                    !userInput.trim() || sendingResponse || interview?.status === 'completed'
+                      ? 'bg-gray-700 text-gray-400 cursor-not-allowed'
+                      : 'bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700'
+                  } transition-all`}
                 >
-                  <Send className="h-4 w-4" />
+                  Send
                 </button>
+                {interview?.status !== 'completed' && (
+                  <button
+                    onClick={handleEndInterview}
+                    className="px-6 rounded-xl font-medium border border-red-500/50 text-red-400 hover:bg-red-500/10 transition-colors"
+                  >
+                    End
+                  </button>
+                )}
               </div>
             </div>
           </div>
-        ) : (
-          <div className="bg-white border-t border-neutral-200 p-6 text-center">
-            <div className="max-w-md mx-auto">
-              <div className="bg-green-100 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4">
-                <CheckCircle className="h-6 w-6 text-green-600" />
-              </div>
-              <h3 className="text-lg font-semibold text-neutral-800 mb-2">Interview Completed</h3>
-              <p className="text-neutral-600 mb-6">
-                You've completed this practice interview session. Review the conversation and feedback to improve your skills.
-              </p>
-              <div className="flex space-x-4 justify-center">
-                <button
-                  onClick={() => navigate('/dashboard')}
-                  className="bg-neutral-800 text-white py-2 px-6 rounded-md font-medium hover:bg-neutral-900"
-                >
-                  Back to Dashboard
-                </button>
-                <button
-                  onClick={() => navigate('/resume-upload')}
-                  className="bg-primary-600 text-white py-2 px-6 rounded-md font-medium hover:bg-primary-700"
-                >
-                  Start New Interview
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        </div>
       </div>
     </div>
   );
