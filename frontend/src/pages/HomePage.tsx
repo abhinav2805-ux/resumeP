@@ -16,11 +16,11 @@ const HomePage = () => {
   };
 
   return (
-    <div className="bg-neutral-50">
+    <div className="min-h-screen bg-gray-900 text-gray-100">
       {/* Hero section */}
-      <section className="relative overflow-hidden bg-primary-700 text-white">
+      <section className="relative overflow-hidden">
         <div className="absolute inset-0">
-          <div className="absolute inset-y-0 left-0 w-full bg-gradient-to-r from-primary-900 to-primary-700 opacity-90"></div>
+          <div className="absolute inset-y-0 w-full bg-gradient-to-b from-blue-900/50 via-purple-900/50 to-gray-900"></div>
         </div>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
           <div className="py-20 md:py-32">
@@ -30,24 +30,24 @@ const HomePage = () => {
               transition={{ duration: 0.5 }}
               className="text-center max-w-3xl mx-auto"
             >
-              <h1 className="text-4xl md:text-5xl font-bold mb-6">
-                Ace Your Next Interview with AI-Powered Practice
+              <h1 className="text-5xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
+                Master Your Interview with AI
               </h1>
-              <p className="text-xl md:text-2xl mb-10 text-primary-100">
-                Upload your resume and get personalized interview simulations to help you prepare for your dream job.
+              <p className="text-xl md:text-2xl mb-10 text-gray-300">
+                Practice interviews tailored to your resume, powered by advanced AI technology.
               </p>
               <div className="flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-4">
                 <button 
                   onClick={handleGetStarted}
-                  className="bg-white text-primary-700 px-6 py-3 rounded-md font-medium text-lg hover:bg-neutral-100 transition duration-150 ease-in-out shadow-button"
+                  className="px-8 py-4 rounded-xl text-white text-lg font-medium bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 transition-all transform hover:scale-105"
                 >
-                  Get Started
+                  Begin Your Journey
                 </button>
                 <a 
                   href="#how-it-works" 
-                  className="border border-white text-white px-6 py-3 rounded-md font-medium text-lg hover:bg-primary-600 transition duration-150 ease-in-out"
+                  className="px-8 py-4 rounded-xl text-lg font-medium border border-gray-700 hover:bg-gray-800/50 transition-all backdrop-blur-sm"
                 >
-                  Learn More
+                  Explore Features
                 </a>
               </div>
             </motion.div>
@@ -56,29 +56,31 @@ const HomePage = () => {
       </section>
 
       {/* How it works section */}
-      <section id="how-it-works" className="py-16 md:py-24">
+      <section id="how-it-works" className="py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-neutral-800 mb-4">How It Works</h2>
-            <p className="text-lg text-neutral-600 max-w-2xl mx-auto">
-              Our platform makes it easy to practice your interview skills with just a few simple steps.
+            <h2 className="text-4xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent mb-4">
+              How It Works
+            </h2>
+            <p className="text-lg text-gray-400 max-w-2xl mx-auto">
+              Three simple steps to elevate your interview game
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.1 }}
               viewport={{ once: true }}
-              className="bg-white p-8 rounded-xl shadow-card"
+              className="bg-gray-800/50 p-8 rounded-2xl border border-gray-700/50 backdrop-blur-sm hover:transform hover:scale-[1.02] transition-all"
             >
-              <div className="bg-primary-100 rounded-full w-14 h-14 flex items-center justify-center mb-6">
-                <FileText className="h-7 w-7 text-primary-600" />
+              <div className="bg-blue-900/30 rounded-xl w-14 h-14 flex items-center justify-center mb-6">
+                <FileText className="h-7 w-7 text-blue-400" />
               </div>
-              <h3 className="text-xl font-semibold text-neutral-800 mb-3">Upload Your Resume</h3>
-              <p className="text-neutral-600">
-                Simply upload your resume in PDF or DOCX format, and our AI will parse your skills and experience.
+              <h3 className="text-xl font-semibold text-gray-100 mb-3">Upload Resume</h3>
+              <p className="text-gray-400">
+                Our AI analyzes your resume to create personalized interview questions.
               </p>
             </motion.div>
 
@@ -87,14 +89,14 @@ const HomePage = () => {
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.2 }}
               viewport={{ once: true }}
-              className="bg-white p-8 rounded-xl shadow-card"
+              className="bg-gray-800/50 p-8 rounded-2xl border border-gray-700/50 backdrop-blur-sm hover:transform hover:scale-[1.02] transition-all"
             >
-              <div className="bg-primary-100 rounded-full w-14 h-14 flex items-center justify-center mb-6">
-                <MessageSquare className="h-7 w-7 text-primary-600" />
+              <div className="bg-purple-900/30 rounded-xl w-14 h-14 flex items-center justify-center mb-6">
+                <MessageSquare className="h-7 w-7 text-purple-400" />
               </div>
-              <h3 className="text-xl font-semibold text-neutral-800 mb-3">Practice with AI</h3>
-              <p className="text-neutral-600">
-                Engage in a realistic interview conversation tailored to your background and the job you're targeting.
+              <h3 className="text-xl font-semibold text-gray-100 mb-3">Practice with AI</h3>
+              <p className="text-gray-400">
+                Engage in dynamic conversations with our advanced AI interviewer.
               </p>
             </motion.div>
 
@@ -103,14 +105,14 @@ const HomePage = () => {
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.3 }}
               viewport={{ once: true }}
-              className="bg-white p-8 rounded-xl shadow-card"
+              className="bg-gray-800/50 p-8 rounded-2xl border border-gray-700/50 backdrop-blur-sm hover:transform hover:scale-[1.02] transition-all"
             >
-              <div className="bg-primary-100 rounded-full w-14 h-14 flex items-center justify-center mb-6">
-                <BarChart className="h-7 w-7 text-primary-600" />
+              <div className="bg-pink-900/30 rounded-xl w-14 h-14 flex items-center justify-center mb-6">
+                <BarChart className="h-7 w-7 text-pink-400" />
               </div>
-              <h3 className="text-xl font-semibold text-neutral-800 mb-3">Get Feedback</h3>
-              <p className="text-neutral-600">
-                Receive detailed feedback on your responses and practical tips to improve your interview performance.
+              <h3 className="text-xl font-semibold text-gray-100 mb-3">Get Insights</h3>
+              <p className="text-gray-400">
+                Receive detailed feedback and track your improvement over time.
               </p>
             </motion.div>
           </div>
@@ -118,87 +120,118 @@ const HomePage = () => {
       </section>
 
       {/* Features section */}
-      <section className="py-16 md:py-24 bg-neutral-100">
+      <section className="py-20 bg-gray-800/30 backdrop-blur-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-neutral-800 mb-4">Key Features</h2>
-            <p className="text-lg text-neutral-600 max-w-2xl mx-auto">
-              Everything you need to prepare for your next job interview
+            <h2 className="text-4xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent mb-4">
+              Advanced Features
+            </h2>
+            <p className="text-lg text-gray-400 max-w-2xl mx-auto">
+              Cutting-edge technology to enhance your interview preparation
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-            <div className="flex">
-              <div className="mr-4 flex-shrink-0">
-                <div className="bg-secondary-100 rounded-full p-3">
-                  <FileText className="h-6 w-6 text-secondary-600" />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <motion.div 
+              initial={{ opacity: 0, x: -20 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.5 }}
+              viewport={{ once: true }}
+              className="flex bg-gray-800/50 p-6 rounded-2xl border border-gray-700/50 backdrop-blur-sm hover:transform hover:scale-[1.02] transition-all"
+            >
+              <div className="mr-4">
+                <div className="bg-blue-900/30 rounded-xl p-3">
+                  <FileText className="h-6 w-6 text-blue-400" />
                 </div>
               </div>
               <div>
-                <h3 className="text-xl font-semibold text-neutral-800 mb-2">Resume Analysis</h3>
-                <p className="text-neutral-600">
-                  Our advanced AI analyzes your resume to identify key skills, experiences, and potential areas for improvement to focus on during interviews.
+                <h3 className="text-xl font-semibold text-gray-100 mb-2">AI Resume Analysis</h3>
+                <p className="text-gray-400">
+                  Our AI examines your resume to create targeted interview questions and scenarios.
                 </p>
               </div>
-            </div>
+            </motion.div>
 
-            <div className="flex">
-              <div className="mr-4 flex-shrink-0">
-                <div className="bg-secondary-100 rounded-full p-3">
-                  <MessageSquare className="h-6 w-6 text-secondary-600" />
+            <motion.div 
+              initial={{ opacity: 0, x: 20 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.5 }}
+              viewport={{ once: true }}
+              className="flex bg-gray-800/50 p-6 rounded-2xl border border-gray-700/50 backdrop-blur-sm hover:transform hover:scale-[1.02] transition-all"
+            >
+              <div className="mr-4">
+                <div className="bg-purple-900/30 rounded-xl p-3">
+                  <MessageSquare className="h-6 w-6 text-purple-400" />
                 </div>
               </div>
               <div>
-                <h3 className="text-xl font-semibold text-neutral-800 mb-2">AI Interviewer</h3>
-                <p className="text-neutral-600">
-                  Practice with our AI interviewer that adapts questions based on your responses, creating a realistic interview experience.
+                <h3 className="text-xl font-semibold text-gray-100 mb-2">Dynamic Conversations</h3>
+                <p className="text-gray-400">
+                  Experience natural, flowing conversations with contextual follow-up questions.
                 </p>
               </div>
-            </div>
+            </motion.div>
 
-            <div className="flex">
-              <div className="mr-4 flex-shrink-0">
-                <div className="bg-secondary-100 rounded-full p-3">
-                  <Award className="h-6 w-6 text-secondary-600" />
+            <motion.div 
+              initial={{ opacity: 0, x: -20 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.5 }}
+              viewport={{ once: true }}
+              className="flex bg-gray-800/50 p-6 rounded-2xl border border-gray-700/50 backdrop-blur-sm hover:transform hover:scale-[1.02] transition-all"
+            >
+              <div className="mr-4">
+                <div className="bg-cyan-900/30 rounded-xl p-3">
+                  <Award className="h-6 w-6 text-cyan-400" />
                 </div>
               </div>
               <div>
-                <h3 className="text-xl font-semibold text-neutral-800 mb-2">Performance Scoring</h3>
-                <p className="text-neutral-600">
-                  Get a detailed score for each of your responses, helping you identify strengths and areas for improvement.
+                <h3 className="text-xl font-semibold text-gray-100 mb-2">Real-time Scoring</h3>
+                <p className="text-gray-400">
+                  Get instant feedback on your responses with detailed scoring metrics.
                 </p>
               </div>
-            </div>
+            </motion.div>
 
-            <div className="flex">
-              <div className="mr-4 flex-shrink-0">
-                <div className="bg-secondary-100 rounded-full p-3">
-                  <BarChart className="h-6 w-6 text-secondary-600" />
+            <motion.div 
+              initial={{ opacity: 0, x: 20 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.5 }}
+              viewport={{ once: true }}
+              className="flex bg-gray-800/50 p-6 rounded-2xl border border-gray-700/50 backdrop-blur-sm hover:transform hover:scale-[1.02] transition-all"
+            >
+              <div className="mr-4">
+                <div className="bg-pink-900/30 rounded-xl p-3">
+                  <BarChart className="h-6 w-6 text-pink-400" />
                 </div>
               </div>
               <div>
-                <h3 className="text-xl font-semibold text-neutral-800 mb-2">Progress Tracking</h3>
-                <p className="text-neutral-600">
-                  Track your interview performance over time and see your improvement as you practice more interviews.
+                <h3 className="text-xl font-semibold text-gray-100 mb-2">Progress Analytics</h3>
+                <p className="text-gray-400">
+                  Track your improvement with detailed performance analytics and insights.
                 </p>
               </div>
-            </div>
+            </motion.div>
           </div>
         </div>
       </section>
 
       {/* CTA section */}
-      <section className="py-16 md:py-24 bg-secondary-600 text-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-3xl md:text-4xl font-bold mb-6">Ready to Ace Your Next Interview?</h2>
-          <p className="text-xl mb-10 max-w-2xl mx-auto">
-            Join thousands of job seekers who have improved their interview skills and landed their dream jobs.
+      <section className="py-20 relative overflow-hidden">
+        <div className="absolute inset-0">
+          <div className="absolute inset-y-0 w-full bg-gradient-to-b from-gray-900 via-purple-900/50 to-blue-900/50"></div>
+        </div>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative">
+          <h2 className="text-4xl font-bold bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent mb-6">
+            Ready to Transform Your Interview Skills?
+          </h2>
+          <p className="text-xl mb-10 text-gray-300 max-w-2xl mx-auto">
+            Join thousands of professionals who have mastered their interview skills with our AI platform.
           </p>
           <button 
             onClick={handleGetStarted}
-            className="bg-white text-secondary-700 px-8 py-3 rounded-md font-medium text-lg hover:bg-neutral-100 transition duration-150 ease-in-out shadow-button"
+            className="px-8 py-4 rounded-xl text-white text-lg font-medium bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 transition-all transform hover:scale-105"
           >
-            Get Started Now
+            Start Your Journey
           </button>
         </div>
       </section>
