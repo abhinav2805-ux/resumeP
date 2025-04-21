@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Send, User, Bot, XCircle, Award, ArrowLeft, CheckCircle, AlertTriangle, Mic, Volume2, VolumeX } from 'lucide-react';

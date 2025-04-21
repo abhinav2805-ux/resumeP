@@ -11,6 +11,7 @@ import traceback
 from dotenv import load_dotenv
 import uuid
 from typing import Dict, List
+import groq
 
 # Load environment variables
 load_dotenv()
@@ -28,7 +29,8 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 if not GROQ_API_KEY:
     raise ValueError("Missing GROQ_API_KEY in .env")
 
-GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
+groq_client=groq.Groq(api_key=GROQ_API_KEY)
+# GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 
 # Interview state storage
 interviews: Dict[str, Dict] = {}
@@ -88,33 +90,46 @@ Resume Text:
 \"\"\"
 """
 
-        headers = {
-            "Authorization": f"Bearer {GROQ_API_KEY}",
-            "Content-Type": "application/json"
-        }
+        # headers = {
+        #     "Authorization": f"Bearer {GROQ_API_KEY}",
+        #     "Content-Type": "application/json"
+        # }
 
-        data = {
-            "model": "llama3-70b-8192",
-            "messages": [
+        # data = {
+        #     "model": "llama3-70b-8192",
+        #     "messages": [
+        #         {"role": "system", "content": "You are an expert at parsing resumes and returning structured JSON output."},
+        #         {"role": "user", "content": prompt}
+        #     ],
+        #     "temperature": 0.3
+        # }
+
+        # response = requests.post(GROQ_API_URL, headers=headers, json=data)
+        # response.raise_for_status()
+        # result = response.json()
+
+        # if "choices" in result and len(result["choices"]) > 0:
+        #     content = result["choices"][0]["message"]["content"]
+        #     cleaned = re.sub(r"^```(?:json)?|```$", "", content.strip(), flags=re.MULTILINE)
+        #     cleaned = re.sub(r'^.*?\{', '{', cleaned, flags=re.DOTALL)
+        # Replace direct API call with Groq SDK
+        chat_completion = groq_client.chat.completions.create(
+            model="llama3-70b-8192",
+            messages=[
                 {"role": "system", "content": "You are an expert at parsing resumes and returning structured JSON output."},
                 {"role": "user", "content": prompt}
             ],
-            "temperature": 0.3
-        }
+            temperature=0.3
+        )
 
-        response = requests.post(GROQ_API_URL, headers=headers, json=data)
-        response.raise_for_status()
-        result = response.json()
+        content = chat_completion.choices[0].message.content
+        cleaned = re.sub(r"^```(?:json)?|```$", "", content.strip(), flags=re.MULTILINE)
+        cleaned = re.sub(r'^.*?\{', '{', cleaned, flags=re.DOTALL)
 
-        if "choices" in result and len(result["choices"]) > 0:
-            content = result["choices"][0]["message"]["content"]
-            cleaned = re.sub(r"^```(?:json)?|```$", "", content.strip(), flags=re.MULTILINE)
-            cleaned = re.sub(r'^.*?\{', '{', cleaned, flags=re.DOTALL)
-            
-            try:
+        try:
                 parsed = json.loads(cleaned)
                 return jsonify(parsed)
-            except json.JSONDecodeError as e:
+        except json.JSONDecodeError as e:
                 logger.error(f"JSON decoding error: {e}")
                 return jsonify({"error": "Failed to parse resume data."}), 500
         else:
@@ -183,42 +198,52 @@ Assessment Criteria:
 Begin the interview professionally, following standard corporate protocol.
 """
 
-        headers = {
-            "Authorization": f"Bearer {GROQ_API_KEY}",
-            "Content-Type": "application/json"
-        }
+        # headers = {
+        #     "Authorization": f"Bearer {GROQ_API_KEY}",
+        #     "Content-Type": "application/json"
+        # }
 
-        data = {
-            "model": "llama3-70b-8192",
-            "messages": [
+        # data = {
+        #     "model": "llama3-70b-8192",
+        #     "messages": [
+        #         {"role": "system", "content": system_prompt},
+        #         {"role": "user", "content": "Please start the interview."}
+        #     ],
+        #     "temperature": 0.7
+        # }
+
+        # response = requests.post(GROQ_API_URL, headers=headers, json=data)
+        # response.raise_for_status()
+        # result = response.json()
+
+        # if "choices" in result and len(result["choices"]) > 0:
+        #     initial_message = result["choices"][0]["message"]["content"]
+        # Replace direct API call with Groq SDK
+        chat_completion = groq_client.chat.completions.create(
+            model="llama3-70b-8192",
+            messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": "Please start the interview."}
             ],
-            "temperature": 0.7
-        }
+            temperature=0.7
+        )
 
-        response = requests.post(GROQ_API_URL, headers=headers, json=data)
-        response.raise_for_status()
-        result = response.json()
-
-        if "choices" in result and len(result["choices"]) > 0:
-            initial_message = result["choices"][0]["message"]["content"]
-            
+        initial_message = chat_completion.choices[0].message.content    
             # Initialize interview state
-            interviews[interview_id] = {
+        interviews[interview_id] = {
                 'status': 'in_progress',
                 'conversation_history': [{"role": "assistant", "content": initial_message}],
                 'questions_asked': 1,
                 'low_score_streak': 0
             }
 
-            return jsonify({
+        return jsonify({
                 "message": initial_message,
                 "interviewId": interview_id,
                 "interviewStatus": "in_progress"
             })
-        else:
-            return jsonify({"error": "Failed to start interview"}), 500
+        # else:
+        #     return jsonify({"error": "Failed to start interview"}), 500
 
     except Exception as e:
         logger.error(f"Error in start_interview: {e}\n{traceback.format_exc()}")
@@ -284,59 +309,65 @@ Proceed with appropriate follow-up maintaining professional interview standards.
         
         messages.append({"role": "user", "content": user_response})
         
-        headers = {
-            "Authorization": f"Bearer {GROQ_API_KEY}",
-            "Content-Type": "application/json"
-        }
+        # headers = {
+        #     "Authorization": f"Bearer {GROQ_API_KEY}",
+        #     "Content-Type": "application/json"
+        # }
 
-        data = {
-            "model": "llama3-70b-8192",
-            "messages": messages,
-            "temperature": 0.7
-        }
+        # data = {
+        #     "model": "llama3-70b-8192",
+        #     "messages": messages,
+        #     "temperature": 0.7
+        # }
 
-        response = requests.post(GROQ_API_URL, headers=headers, json=data)
-        response.raise_for_status()
-        result = response.json()
+        # response = requests.post(GROQ_API_URL, headers=headers, json=data)
+        # response.raise_for_status()
+        # result = response.json()
+        chat_completion = groq_client.chat.completions.create(
+            model="llama3-70b-8192",
+            messages=messages,
+            temperature=0.7
+        )
 
-        if "choices" in result and len(result["choices"]) > 0:
-            content = result["choices"][0]["message"]["content"]
+        content = chat_completion.choices[0].message.content
+        # if "choices" in result and len(result["choices"]) > 0:
+        # content = result["choices"][0]["message"]["content"]
             
-            score_match = re.search(r'Score:\s*(\d+)/10', content)
-            score = int(score_match.group(1)) if score_match else None
+        score_match = re.search(r'Score:\s*(\d+)/10', content)
+        score = int(score_match.group(1)) if score_match else None
             
-            if score and score < 5:
+        if score and score < 5:
                 interview['low_score_streak'] += 1
-            else:
+        else:
                 interview['low_score_streak'] = 0
             
-            interview['conversation_history'].append({"role": "assistant", "content": content})
-            interview['questions_asked'] += 1
+        interview['conversation_history'].append({"role": "assistant", "content": content})
+        interview['questions_asked'] += 1
             
-            termination_reason = None
-            if interview['questions_asked'] >= 25:
+        termination_reason = None
+        if interview['questions_asked'] >= 25:
                 interview['status'] = 'completed'
                 termination_reason = "question_limit"
-            elif interview['low_score_streak'] >= 3:
+        elif interview['low_score_streak'] >= 3:
                 interview['status'] = 'completed'
                 termination_reason = "low_score_streak"
             
-            if interview['status'] == 'completed':
+        if interview['status'] == 'completed':
                 if not any(x in content.lower() for x in ['conclude', 'final', 'end']):
                     if termination_reason == "low_score_streak":
                         content += "\n\nI appreciate your time today. We'll wrap up here - thank you for the conversation!"
                     else:
                         content += "\n\nThank you for your time! This has been a great conversation."
             
-            return jsonify({
+        return jsonify({
                 "interviewStatus": interview['status'],
                 "message": content,
                 "feedback": "Well done!" if score and score >= 7 else "Let's explore this further",
                 "score": score,
                 "lowScoreStreak": interview['low_score_streak']
             })
-        else:
-            return jsonify({"error": "Failed to continue interview"}), 500
+        # else:
+        #     return jsonify({"error": "Failed to continue interview"}), 500
 
     except Exception as e:
         logger.error(f"Error: {e}\n{traceback.format_exc()}")
