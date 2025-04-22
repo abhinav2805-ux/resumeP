@@ -30,7 +30,6 @@ if not GROQ_API_KEY:
     raise ValueError("Missing GROQ_API_KEY in .env")
 
 groq_client=groq.Groq(api_key=GROQ_API_KEY)
-# GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 
 # Interview state storage
 interviews: Dict[str, Dict] = {}
@@ -90,28 +89,6 @@ Resume Text:
 \"\"\"
 """
 
-        # headers = {
-        #     "Authorization": f"Bearer {GROQ_API_KEY}",
-        #     "Content-Type": "application/json"
-        # }
-
-        # data = {
-        #     "model": "llama3-70b-8192",
-        #     "messages": [
-        #         {"role": "system", "content": "You are an expert at parsing resumes and returning structured JSON output."},
-        #         {"role": "user", "content": prompt}
-        #     ],
-        #     "temperature": 0.3
-        # }
-
-        # response = requests.post(GROQ_API_URL, headers=headers, json=data)
-        # response.raise_for_status()
-        # result = response.json()
-
-        # if "choices" in result and len(result["choices"]) > 0:
-        #     content = result["choices"][0]["message"]["content"]
-        #     cleaned = re.sub(r"^```(?:json)?|```$", "", content.strip(), flags=re.MULTILINE)
-        #     cleaned = re.sub(r'^.*?\{', '{', cleaned, flags=re.DOTALL)
         # Replace direct API call with Groq SDK
         chat_completion = groq_client.chat.completions.create(
             model="llama3-70b-8192",
@@ -198,26 +175,7 @@ Assessment Criteria:
 Begin the interview professionally, following standard corporate protocol.
 """
 
-        # headers = {
-        #     "Authorization": f"Bearer {GROQ_API_KEY}",
-        #     "Content-Type": "application/json"
-        # }
 
-        # data = {
-        #     "model": "llama3-70b-8192",
-        #     "messages": [
-        #         {"role": "system", "content": system_prompt},
-        #         {"role": "user", "content": "Please start the interview."}
-        #     ],
-        #     "temperature": 0.7
-        # }
-
-        # response = requests.post(GROQ_API_URL, headers=headers, json=data)
-        # response.raise_for_status()
-        # result = response.json()
-
-        # if "choices" in result and len(result["choices"]) > 0:
-        #     initial_message = result["choices"][0]["message"]["content"]
         # Replace direct API call with Groq SDK
         chat_completion = groq_client.chat.completions.create(
             model="llama3-70b-8192",
@@ -309,20 +267,7 @@ Proceed with appropriate follow-up maintaining professional interview standards.
         
         messages.append({"role": "user", "content": user_response})
         
-        # headers = {
-        #     "Authorization": f"Bearer {GROQ_API_KEY}",
-        #     "Content-Type": "application/json"
-        # }
 
-        # data = {
-        #     "model": "llama3-70b-8192",
-        #     "messages": messages,
-        #     "temperature": 0.7
-        # }
-
-        # response = requests.post(GROQ_API_URL, headers=headers, json=data)
-        # response.raise_for_status()
-        # result = response.json()
         chat_completion = groq_client.chat.completions.create(
             model="llama3-70b-8192",
             messages=messages,
@@ -366,8 +311,6 @@ Proceed with appropriate follow-up maintaining professional interview standards.
                 "score": score,
                 "lowScoreStreak": interview['low_score_streak']
             })
-        # else:
-        #     return jsonify({"error": "Failed to continue interview"}), 500
 
     except Exception as e:
         logger.error(f"Error: {e}\n{traceback.format_exc()}")
