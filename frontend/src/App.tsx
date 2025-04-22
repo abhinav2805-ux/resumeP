@@ -23,7 +23,7 @@ function App() {
 
   // Update page title
   useEffect(() => {
-    document.title = 'Resume Interviewer';
+    document.title = 'HR-Sahab';
   }, []);
 
   if (loading) {

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { 
@@ -110,43 +111,43 @@ const DashboardPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 text-gray-100">
-      <div className="max-w-6xl mx-auto py-12 px-4">
-        {/* Header Section */}
-        <div className="text-center mb-12">
-          <h1 className="text-5xl font-bold bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 bg-clip-text text-transparent mb-4">
-            Interview Command Center
-          </h1>
-          <p className="text-lg text-gray-400">
-            Track your progress and manage interview simulations
-          </p>
-        </div>
+    <div className="min-h-screen bg-black text-slate-200">
+    <div className="max-w-7xl mx-auto py-12 px-4">
+      {/* Header Section with updated styling */}
+      <div className="text-center mb-12">
+        <h1 className="text-5xl font-bold bg-gradient-to-r from-cyan-400 via-blue-400 to-emerald-400 bg-clip-text text-transparent mb-4">
+          Interview Command Center
+        </h1>
+        <p className="text-lg text-slate-400">
+          Track your progress and manage interview simulations
+        </p>
+      </div>
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-          <div className="bg-gray-800/50 border border-gray-700/50 rounded-2xl p-6 backdrop-blur-sm hover:transform hover:scale-[1.02] transition-all">
-            <div className="flex justify-between items-start mb-4">
-              <div className="p-2 rounded-lg bg-blue-900/30">
-                <PieChart className="h-5 w-5 text-blue-400" />
-              </div>
-              <span className="text-blue-400 text-sm font-medium flex items-center">
-                <ArrowUpRight className="h-4 w-4 mr-1" />
-                {stats.improvement}% growth
-              </span>
+        <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-6 backdrop-blur-sm hover:border-cyan-700/50 transition-all">
+          <div className="flex justify-between items-start mb-4">
+            <div className="p-2 rounded-lg bg-cyan-900/30 border border-cyan-800/50">
+              <PieChart className="h-5 w-5 text-cyan-400" />
             </div>
-            <h3 className="text-gray-400 text-sm font-medium">Total Interviews</h3>
-            <p className="text-2xl font-bold text-gray-100 mt-1">{stats.totalInterviews}</p>
+            <span className="text-cyan-400 text-sm font-medium flex items-center">
+              <ArrowUpRight className="h-4 w-4 mr-1" />
+              {stats.improvement}% growth
+            </span>
           </div>
+          <h3 className="text-slate-400 text-sm font-medium">Total Interviews</h3>
+          <p className="text-2xl font-bold text-slate-100 mt-1">{stats.totalInterviews}</p>
+        </div>
 
-          <div className="bg-gray-800/50 border border-gray-700/50 rounded-2xl p-6 backdrop-blur-sm hover:transform hover:scale-[1.02] transition-all">
-            <div className="flex justify-between items-start mb-4">
-              <div className="p-2 rounded-lg bg-green-900/30">
-                <BarChart className="h-5 w-5 text-green-400" />
-              </div>
+        <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-6 backdrop-blur-sm hover:border-blue-700/50 transition-all">
+          <div className="flex justify-between items-start mb-4">
+            <div className="p-2 rounded-lg bg-blue-900/30 border border-blue-800/50">
+              <BarChart className="h-5 w-5 text-blue-400" />
             </div>
-            <h3 className="text-gray-400 text-sm font-medium">Average Score</h3>
-            <p className="text-2xl font-bold text-gray-100 mt-1">{stats.avgScore}%</p>
           </div>
+          <h3 className="text-slate-400 text-sm font-medium">Average Score</h3>
+          <p className="text-2xl font-bold text-slate-100 mt-1">{stats.avgScore}%</p>
+        </div>
 
           <div className="bg-gray-800/50 border border-gray-700/50 rounded-2xl p-6 backdrop-blur-sm hover:transform hover:scale-[1.02] transition-all">
             <div className="flex justify-between items-start mb-4">
@@ -174,17 +175,17 @@ const DashboardPage = () => {
         </div>
 
         {/* Recent Interviews Table */}
-        <div className="bg-gray-800/50 border border-gray-700/50 rounded-2xl backdrop-blur-sm mb-10">
-          <div className="flex justify-between items-center p-6 border-b border-gray-700/50">
-            <h2 className="text-xl font-semibold text-gray-100">Recent Simulations</h2>
-            <Link 
-              to="/resume-upload" 
-              className="flex items-center text-blue-400 hover:text-blue-300 text-sm font-medium"
-            >
-              <Plus className="h-4 w-4 mr-1" />
-              New Interview
-            </Link>
-          </div>
+        <div className="bg-slate-900/60 border border-slate-800 rounded-xl backdrop-blur-sm mb-10">
+        <div className="flex justify-between items-center p-6 border-b border-slate-800">
+          <h2 className="text-xl font-semibold text-slate-100">Recent Simulations</h2>
+          <Link 
+            to="/resume-upload" 
+            className="flex items-center text-cyan-400 hover:text-cyan-300 text-sm font-medium"
+          >
+            <Plus className="h-4 w-4 mr-1" />
+            New Interview
+          </Link>
+        </div>
 
           {interviews.length === 0 ? (
             <div className="p-8 text-center">
@@ -206,7 +207,7 @@ const DashboardPage = () => {
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-gray-900/50">
+                <thead className="bg-gray-950/50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                       Resume
@@ -225,8 +226,8 @@ const DashboardPage = () => {
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-700/50">
-                  {interviews.map((interview) => (
+                <tbody className="divide-y divide-slate-800">
+                {interviews.map((interview) => (
                     <tr key={interview.id} className="hover:bg-gray-800/30">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
@@ -267,7 +268,7 @@ const DashboardPage = () => {
 
         {/* Quick Actions */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-gray-800/50 border border-gray-700/50 rounded-2xl p-6 backdrop-blur-sm hover:transform hover:scale-[1.02] transition-all">
+        <div className="bg-gray-800/50 border border-gray-700/50 rounded-2xl p-6 backdrop-blur-sm hover:transform hover:scale-[1.02] transition-all">
             <div className="p-3 rounded-lg bg-blue-900/30 inline-block mb-4">
               <FileText className="h-6 w-6 text-blue-400" />
             </div>

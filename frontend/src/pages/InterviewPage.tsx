@@ -424,7 +424,7 @@ const InterviewPage = () => {
                     }`}
                   />
                   <span className="text-sm text-gray-400">
-                    {message.type === 'user' ? 'You' : 'AI Interviewer'} • {formatTime(message.timestamp)}
+                    {message.type === 'user' ? 'You' : 'HR-Sahab'} • {formatTime(message.timestamp)}
                   </span>
                 </div>
                 {message.type === 'interviewer' && (

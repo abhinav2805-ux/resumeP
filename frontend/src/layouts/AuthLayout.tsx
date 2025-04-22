@@ -9,7 +9,7 @@ const AuthLayout = () => {
         <div>
           <div className="flex items-center mb-8">
             <FileText size={32} className="mr-2" />
-            <h1 className="text-2xl font-bold">Resume Interviewer</h1>
+            <h1 className="text-2xl font-bold">HR-Sahab</h1>
           </div>
           <div className="mt-12 pr-12">
             <h2 className="text-3xl font-bold mb-6">Practice your interviews with AI assistance</h2>
@@ -44,7 +44,7 @@ const AuthLayout = () => {
             </div>
           </div>
         </div>
-        <p className="text-primary-200 text-sm">© 2025 Resume Interviewer. All rights reserved.</p>
+        <p className="text-primary-200 text-sm">© 2025 HR-Sahab. All rights reserved.</p>
       </div>
       
       {/* Right side - auth forms */}

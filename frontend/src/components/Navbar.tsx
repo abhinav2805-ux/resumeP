@@ -52,7 +52,7 @@ const Navbar = () => {
               </div>
               {/* Removed gradient for minimalism, using a bright text color */}
               <span className="font-bold text-xl text-slate-100">
-                AI Interviewer
+                HR-Sahab
               </span>
             </Link>
           </div>

@@ -57,7 +57,7 @@ const HomePage = () => {
              >
               {/* Updated heading gradient - cyan/blue/emerald */}
               <h1 className="text-5xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-cyan-400 via-blue-400 to-emerald-400 bg-clip-text text-transparent tracking-tight">
-                AI Interviewer: Precision Practice
+                HR-Sahab: Precision Practice
               </h1>
               <p className="text-xl md:text-2xl mb-10 text-slate-300">
                 Harness AI trained on your resume. Experience interviews powered by cutting-edge technology.

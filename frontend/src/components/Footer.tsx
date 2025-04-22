@@ -1,11 +1,11 @@
 import { Link } from 'react-router-dom';
-import { FileText, Github as GitHub, Twitter, Linkedin } from 'lucide-react'; // Ensure lucide-react is installed
+import { FileText, Github as GitHub, Linkedin } from 'lucide-react'; // Ensure lucide-react is installed
 
 const Footer = () => {
   return (
     // Changed background to solid, dark slate. Updated text colors for consistency.
     <footer className="bg-slate-900 text-slate-400">
-      <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:py-16 lg:px-8">
+      <div className="max-w-7xl mx-auto py-2 px-4 sm:px-6 lg:py-8 lg:px-6">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 xl:gap-12">
           {/* Logo and description */}
           {/* Adjusted column span for better balance on large screens */}
@@ -14,21 +14,18 @@ const Footer = () => {
               {/* Consistent blue accent */}
               <FileText className="h-8 w-8 text-blue-500 mr-2 flex-shrink-0" />
               {/* Brighter text for logo */}
-              <span className="font-bold text-xl text-slate-100">AI Interviewer</span>
+              <span className="font-bold text-xl text-slate-100">HR-Sahab</span>
             </div>
             <p className="text-sm max-w-md">
               Practice your interview skills with our AI-powered platform. Upload your resume, get personalized interview questions, and receive feedback to improve your performance.
             </p>
             <div className="flex mt-6 space-x-5">
               {/* Updated social link colors and hover effect */}
-              <a href="#" target="_blank" rel="noopener noreferrer" className="text-slate-500 hover:text-blue-400 transition-colors">
+              <a href="https://github.com/abhinav2805-ux/resumeP" target="_blank" rel="noopener noreferrer" className="text-slate-500 hover:text-blue-400 transition-colors">
                 <GitHub className="h-5 w-5" />
                 <span className="sr-only">GitHub</span>
               </a>
-              <a href="#" target="_blank" rel="noopener noreferrer" className="text-slate-500 hover:text-blue-400 transition-colors">
-                <Twitter className="h-5 w-5" />
-                <span className="sr-only">Twitter</span>
-              </a>
+            
               <a href="#" target="_blank" rel="noopener noreferrer" className="text-slate-500 hover:text-blue-400 transition-colors">
                 <Linkedin className="h-5 w-5" />
                 <span className="sr-only">LinkedIn</span>
@@ -90,9 +87,9 @@ const Footer = () => {
         </div>
 
         {/* Updated border and copyright text color */}
-        <div className="mt-12 border-t border-slate-800 pt-8">
+        <div className="mt-12 border-t border-slate-800 pt-4">
           <p className="text-slate-500 text-sm text-center">
-            &copy; {new Date().getFullYear()} AI Interviewer. All rights reserved.
+            &copy; {new Date().getFullYear()} HR-Sahab. All rights reserved.
           </p>
         </div>
       </div>
