@@ -239,30 +239,73 @@ const InterviewPage = () => {
     }
   };
 
-  const handleEndInterview = () => {
-    // In a real app, we would update the interview status in the backend
-    if (!interview) {return;}
+  const handleEndInterview = async () => {
+    if (!interview) return;
     
-    setInterview({
-      ...interview,
-      status: 'completed'
-    });
-    
-    // Add a final message
-    const finalMessage: Message = {
-      type: 'interviewer',
-      content: "Thank you for participating in this practice interview. You've done a great job! I hope the feedback was helpful for your preparation. Feel free to review our conversation and practice again anytime.",
-      timestamp: new Date()
-    };
-    
-    setInterview(prev => {
-      if (!prev) {return prev;}
-      return {
-        ...prev,
-        conversationHistory: [...prev.conversationHistory, finalMessage],
-        status: 'completed'
+    try {
+      // Calculate final score (average of all scores)
+      const scores = interview.conversationHistory
+        .filter(msg => msg.score !== undefined)
+        .map(msg => msg.score as number);
+      
+      const finalScore = scores.length > 0 
+        ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) 
+        : 0;
+  
+      // Add final message
+      const finalMessage: Message = {
+        type: 'interviewer',
+        content: "Thank you for participating in this practice interview. You've done a great job! I hope the feedback was helpful for your preparation. Feel free to review our conversation and practice again anytime.",
+        timestamp: new Date(),
+        score: finalScore
       };
-    });
+  
+      const updatedConversationHistory = [
+        ...interview.conversationHistory,
+        finalMessage
+      ];
+  
+      // Send to backend
+      const response = await fetch('http://localhost:5000/end-interview', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          interviewId: interview.id,
+          userName: interview.resumeData.name,
+          conversationHistory: updatedConversationHistory,
+          finalScore: finalScore
+        }),
+      });
+  
+      if (!response.ok) {
+        throw new Error('Failed to save interview');
+      }
+  
+      // Update local state
+      setInterview(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          status: 'completed',
+          conversationHistory: updatedConversationHistory,
+          currentScore: finalScore
+        };
+      });
+  
+      // Save to localStorage
+      localStorage.setItem(`interview_${interview.id}`, JSON.stringify({
+        ...interview,
+        status: 'completed',
+        conversationHistory: updatedConversationHistory,
+        currentScore: finalScore
+      }));
+  
+    } catch (error) {
+      console.error('Error ending interview:', error);
+      setError('Failed to save interview results. Please try again.');
+    }
   };
 
   const formatTime = (date: Date) => {
